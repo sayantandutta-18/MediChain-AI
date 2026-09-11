@@ -5,6 +5,8 @@ import helmet from "helmet";
 import authRoutes from "./routes/auth.routes.js";
 import recordRoutes from "./routes/record.routes.js";
 import accessRequestRoutes from "./routes/accessRequest.routes.js";
+import auditLogRoutes from "./routes/auditLog.routes.js";
+
 const app = express();
 
 // Security
@@ -32,6 +34,8 @@ app.get("/health", (req, res) => {
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/records", recordRoutes);
 app.use("/api/v1/access-requests", accessRequestRoutes);
+app.use("/api/v1/audit-logs", auditLogRoutes);
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({

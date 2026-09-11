@@ -9,6 +9,8 @@ import {
   revokeAccessRequest,
 } from "../services/accessRequest.service.js";
 
+import { createAuditLog } from "../services/auditLog.service.js";
+
 // Doctor creates access request
 export const createRequest = async (req: Request, res: Response) => {
   try {
@@ -37,6 +39,22 @@ export const createRequest = async (req: Request, res: Response) => {
       doctorId,
       patientId
     );
+
+    // Audit log: ACCESS_REQUESTED
+    await createAuditLog({
+      userId: doctorId,
+      role: req.user!.role,
+      action: "ACCESS_REQUESTED",
+      patientId: patientId,
+      status: "SUCCESS",
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+      metadata: {
+        requestId: request._id.toString(),
+        doctorId,
+        patientId,
+      },
+    });
 
     return res.status(201).json({
       success: true,
@@ -157,13 +175,31 @@ export const approveRequest = async (
       });
     }
 
-    const expiryDays = Number(req.body.expiryDays) || 7;
+    const expiryDays = Number(req.body?.expiryDays) || 7;
 
     const request = await approveAccessRequest(
       requestId,
       patientId,
       expiryDays
     );
+
+    // Audit log: ACCESS_APPROVED
+    await createAuditLog({
+      userId: patientId,
+      role: req.user!.role,
+      action: "ACCESS_APPROVED",
+      patientId: patientId,
+      status: "SUCCESS",
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+      metadata: {
+        requestId: request._id.toString(),
+        doctorId: request.doctorId.toString(),
+        patientId: request.patientId.toString(),
+        expiresAt: request.expiresAt,
+        expiryDays,
+      },
+    });
 
     return res.status(200).json({
       success: true,
@@ -211,6 +247,22 @@ export const rejectRequest = async (
       patientId
     );
 
+    // Audit log: ACCESS_REJECTED
+    await createAuditLog({
+      userId: patientId,
+      role: req.user!.role,
+      action: "ACCESS_REJECTED",
+      patientId: patientId,
+      status: "SUCCESS",
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+      metadata: {
+        requestId: request._id.toString(),
+        doctorId: request.doctorId.toString(),
+        patientId: request.patientId.toString(),
+      },
+    });
+
     return res.status(200).json({
       success: true,
       message: "Access request rejected successfully",
@@ -256,6 +308,22 @@ export const revokeRequest = async (
       requestId,
       patientId
     );
+
+    // Audit log: ACCESS_REVOKED
+    await createAuditLog({
+      userId: patientId,
+      role: req.user!.role,
+      action: "ACCESS_REVOKED",
+      patientId: patientId,
+      status: "SUCCESS",
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+      metadata: {
+        requestId: request._id.toString(),
+        doctorId: request.doctorId.toString(),
+        patientId: request.patientId.toString(),
+      },
+    });
 
     return res.status(200).json({
       success: true,

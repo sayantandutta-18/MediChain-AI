@@ -20,6 +20,8 @@ import {
   checkDoctorPatientAccess,
 } from "../services/accessControl.service.js";
 
+import { createAuditLog } from "../services/auditLog.service.js";
+
 
 // =====================================================
 // CREATE MEDICAL RECORD
@@ -144,6 +146,30 @@ export const createRecord = async (
     console.log(
       "✅ Encrypted medical record created"
     );
+
+    // =================================================
+    // AUDIT LOG
+    // =================================================
+
+    await createAuditLog({
+      userId: patientId,
+      role: req.user!.role,
+      action: "RECORD_CREATED",
+
+      recordId: record._id.toString(),
+      patientId: record.patientId.toString(),
+
+      status: "SUCCESS",
+
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+
+      metadata: {
+        title: record.title,
+        type: record.type,
+      },
+    });
+
 
     // =================================================
     // RESPONSE
@@ -512,6 +538,30 @@ export const getRecord = async (
     );
 
     // =================================================
+    // AUDIT LOG
+    // =================================================
+
+    await createAuditLog({
+      userId: patientId,
+      role: req.user!.role,
+      action: "RECORD_VIEWED",
+
+      recordId: record._id.toString(),
+      patientId: record.patientId.toString(),
+
+      status: "SUCCESS",
+
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+
+      metadata: {
+        title: record.title,
+        type: record.type,
+      },
+    });
+
+
+    // =================================================
     // RETURN METADATA ONLY
     // =================================================
 
@@ -622,7 +672,7 @@ export const updateRecord = async (
       provider,
       hospital,
       summary,
-    } = req.body;
+    } = req.body ?? {};
 
     const updateData: {
       title?: string;
@@ -701,6 +751,31 @@ export const updateRecord = async (
     console.log(
       "✅ Medical record updated"
     );
+
+    // =================================================
+    // AUDIT LOG
+    // =================================================
+
+    await createAuditLog({
+      userId: patientId,
+      role: req.user!.role,
+      action: "RECORD_UPDATED",
+
+      recordId: record._id.toString(),
+      patientId: record.patientId.toString(),
+
+      status: "SUCCESS",
+
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+
+      metadata: {
+        title: record.title,
+        type: record.type,
+        updatedFields: Object.keys(updateData),
+      },
+    });
+
 
     // =================================================
     // RESPONSE
@@ -828,6 +903,30 @@ export const deleteRecord = async (
     console.log(
       "✅ Medical record deleted successfully"
     );
+
+    // =================================================
+    // AUDIT LOG
+    // =================================================
+
+    await createAuditLog({
+      userId: patientId,
+      role: req.user!.role,
+      action: "RECORD_DELETED",
+
+      recordId: record._id.toString(),
+      patientId: record.patientId.toString(),
+
+      status: "SUCCESS",
+
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+
+      metadata: {
+        title: record.title,
+        type: record.type,
+      },
+    });
+
 
     // =================================================
     // RESPONSE
@@ -1087,6 +1186,34 @@ export const downloadRecord = async (
     console.log(
       "🔓 File decrypted successfully"
     );
+
+    // =================================================
+    // AUDIT LOG
+    // =================================================
+
+    await createAuditLog({
+      userId,
+      role,
+      action: "RECORD_DOWNLOADED",
+
+      recordId: record._id.toString(),
+      patientId: record.patientId.toString(),
+
+      ...(role === "DOCTOR" && {
+        doctorId: userId,
+      }),
+
+      status: "SUCCESS",
+
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+
+      metadata: {
+        title: record.title,
+        type: record.type,
+      },
+    });
+
 
     // =================================================
     // SEND FILE
