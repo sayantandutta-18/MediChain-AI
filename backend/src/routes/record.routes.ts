@@ -14,6 +14,7 @@ import {
   updateRecord,
   deleteRecord,
   downloadRecord,
+  verifyRecord,
 } from "../controllers/record.controller.js";
 
 const router = Router();
@@ -91,6 +92,19 @@ router.get(
   authenticate,
   authorize("DOCTOR"),
   getPatientRecordsForDoctor
+);
+
+
+// =====================================================
+// VERIFY MEDICAL RECORD ON SUI BLOCKCHAIN
+// GET /api/v1/records/:id/verify
+// =====================================================
+
+router.get(
+  "/:id/verify",
+  authenticate,
+  authorize("PATIENT"),
+  verifyRecord
 );
 
 

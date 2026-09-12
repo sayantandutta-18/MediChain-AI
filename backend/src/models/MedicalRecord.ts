@@ -22,6 +22,12 @@ export interface IMedicalRecord extends Document {
 
   encrypted: boolean;
 
+  // Blockchain verification metadata
+  blockchainTxDigest?: string;
+  blockchainObjectId?: string;
+  blockchainPackageId?: string;
+  blockchainNetwork?: string;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -66,10 +72,12 @@ const medicalRecordSchema = new Schema<IMedicalRecord>(
       trim: true,
     },
 
+    // Original file URL / metadata
     fileUrl: {
       type: String,
     },
 
+    // SHA-256 hash of original file
     fileHash: {
       type: String,
     },
@@ -92,6 +100,27 @@ const medicalRecordSchema = new Schema<IMedicalRecord>(
     encrypted: {
       type: Boolean,
       default: false,
+    },
+
+    // Blockchain transaction digest
+    blockchainTxDigest: {
+      type: String,
+    },
+
+    // Sui MedicalRecordAnchor object ID
+    blockchainObjectId: {
+      type: String,
+    },
+
+    // Published MediChain Move package ID
+    blockchainPackageId: {
+      type: String,
+    },
+
+    // Blockchain network
+    blockchainNetwork: {
+      type: String,
+      default: "testnet",
     },
   },
   {

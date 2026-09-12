@@ -21,6 +21,11 @@ import {
 } from "../services/accessControl.service.js";
 
 import { createAuditLog } from "../services/auditLog.service.js";
+import {
+  storeHashOnSui,
+  verifyRecordOnSui,
+} from "../blockchain/sui.service.js";
+import User from "../models/user.js";
 
 
 // =====================================================
@@ -91,6 +96,41 @@ export const createRecord = async (
     );
 
     // =================================================
+    // GET PATIENT WALLET ADDRESS
+    // =================================================
+
+    const patient = await User.findById(patientId);
+
+    if (!patient) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          message: "Patient account not found",
+        },
+      });
+    }
+
+    const patientWalletAddress = patient.walletAddress;
+
+    if (
+      !patientWalletAddress ||
+      !/^0x[a-fA-F0-9]{64}$/.test(patientWalletAddress)
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message:
+            "A valid Sui wallet address is required before creating a blockchain-anchored medical record",
+        },
+      });
+    }
+
+    console.log(
+      "🔗 Patient Sui Wallet:",
+      patientWalletAddress
+    );
+
+    // =================================================
     // SHA-256 HASH
     // =================================================
 
@@ -148,6 +188,83 @@ export const createRecord = async (
     );
 
     // =================================================
+    // BLOCKCHAIN ANCHOR
+    // =================================================
+
+    let blockchainAnchor;
+
+    try {
+      blockchainAnchor = await storeHashOnSui(
+        fileHash,
+        record._id.toString(),
+        patientWalletAddress
+      );
+    } catch (blockchainError) {
+      console.error(
+        "❌ Sui blockchain anchoring failed:",
+        blockchainError
+      );
+
+      // Do not leave a MongoDB record that claims to be
+      // blockchain-backed when anchoring actually failed.
+      await record.deleteOne();
+
+      try {
+        await createAuditLog({
+          userId: patientId,
+          role: req.user!.role,
+          action: "RECORD_CREATED",
+          patientId: patientId,
+          status: "FAILED",
+          ipAddress: req.ip,
+          userAgent: req.get("user-agent"),
+          metadata: {
+            title: record.title,
+            type: record.type,
+            reason:
+              blockchainError instanceof Error
+                ? blockchainError.message
+                : "Sui blockchain anchoring failed",
+          },
+        });
+      } catch (auditError) {
+        console.error(
+          "⚠️ Failed to create blockchain failure audit log:",
+          auditError
+        );
+      }
+
+      return res.status(502).json({
+        success: false,
+        error: {
+          message:
+            blockchainError instanceof Error
+              ? blockchainError.message
+              : "Failed to anchor medical record on Sui blockchain",
+        },
+      });
+    }
+
+    record.blockchainTxDigest =
+      blockchainAnchor.transactionDigest;
+
+    record.blockchainObjectId =
+      blockchainAnchor.blockchainObjectId;
+
+    record.blockchainPackageId =
+      blockchainAnchor.packageId;
+
+    record.blockchainNetwork =
+      blockchainAnchor.network;
+
+    await record.save();
+
+    console.log(
+      "⛓️ Medical record hash anchored on Sui:",
+      blockchainAnchor.transactionDigest
+    );
+
+    // =================================================
     // AUDIT LOG
     // =================================================
 
@@ -189,6 +306,16 @@ export const createRecord = async (
         summary: record.summary,
         fileHash: record.fileHash,
         encrypted: record.encrypted,
+
+        blockchain: {
+          network: record.blockchainNetwork,
+          packageId: record.blockchainPackageId,
+          transactionDigest:
+            record.blockchainTxDigest,
+          objectId:
+            record.blockchainObjectId,
+        },
+
         createdAt: record.createdAt,
         updatedAt: record.updatedAt,
       },
@@ -588,6 +715,18 @@ export const getRecord = async (
           record.fileHash,
         encrypted:
           record.encrypted,
+
+        blockchain: {
+          network:
+            record.blockchainNetwork,
+          packageId:
+            record.blockchainPackageId,
+          transactionDigest:
+            record.blockchainTxDigest,
+          objectId:
+            record.blockchainObjectId,
+        },
+
         createdAt:
           record.createdAt,
         updatedAt:
@@ -806,6 +945,18 @@ export const updateRecord = async (
           record.fileHash,
         encrypted:
           record.encrypted,
+
+        blockchain: {
+          network:
+            record.blockchainNetwork,
+          packageId:
+            record.blockchainPackageId,
+          transactionDigest:
+            record.blockchainTxDigest,
+          objectId:
+            record.blockchainObjectId,
+        },
+
         createdAt:
           record.createdAt,
         updatedAt:
@@ -951,6 +1102,17 @@ export const deleteRecord = async (
           record.fileHash,
         encrypted:
           record.encrypted,
+
+        blockchain: {
+          network:
+            record.blockchainNetwork,
+          packageId:
+            record.blockchainPackageId,
+          transactionDigest:
+            record.blockchainTxDigest,
+          objectId:
+            record.blockchainObjectId,
+        },
       },
     });
 
@@ -1276,6 +1438,178 @@ export const downloadRecord = async (
       success: false,
       error: {
         message,
+      },
+    });
+  }
+};
+
+// =====================================================
+// VERIFY MEDICAL RECORD ON SUI BLOCKCHAIN
+// =====================================================
+
+export const verifyRecord = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    console.log("🔍 VERIFY BLOCKCHAIN RECORD CONTROLLER HIT");
+
+    const idParam = req.params.id;
+
+    const id = Array.isArray(idParam)
+      ? idParam[0]
+      : idParam;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: "Record ID is required",
+        },
+      });
+    }
+
+    // Get authenticated patient
+    const patientId = req.user?.userId;
+
+    if (!patientId) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          message: "Authentication required",
+        },
+      });
+    }
+
+    // Find record
+    const record = await getMedicalRecordById(id);
+
+    if (!record) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          message: "Medical record not found",
+        },
+      });
+    }
+
+    // Ownership check
+    if (record.patientId.toString() !== patientId) {
+      return res.status(403).json({
+        success: false,
+        error: {
+          message:
+            "You are not authorized to verify this record",
+        },
+      });
+    }
+
+    // Blockchain data check
+    if (!record.blockchainTxDigest) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message:
+            "This medical record is not anchored on the blockchain",
+        },
+      });
+    }
+
+    if (!record.fileHash) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: "Medical record hash is missing",
+        },
+      });
+    }
+
+    console.log(
+      "🔗 Transaction:",
+      record.blockchainTxDigest
+    );
+
+    console.log(
+      "🔐 Expected Hash:",
+      record.fileHash
+    );
+
+    // Verify transaction on Sui
+    const blockchainVerification =
+      await verifyRecordOnSui(
+        record.blockchainTxDigest,
+        record.fileHash
+      );
+
+    // Audit
+    await createAuditLog({
+      userId: patientId,
+      role: req.user!.role,
+      action: "RECORD_VIEWED",
+      recordId: record._id.toString(),
+      patientId: record.patientId.toString(),
+      status: blockchainVerification.verified
+        ? "SUCCESS"
+        : "FAILED",
+      ipAddress: req.ip,
+      userAgent: req.get("user-agent"),
+      metadata: {
+        verification: true,
+        transactionDigest:
+          record.blockchainTxDigest,
+        fileHash: record.fileHash,
+        verified:
+          blockchainVerification.verified,
+      },
+    });
+
+    // Response
+    return res.status(200).json({
+      success: true,
+
+      verification: {
+        verified:
+          blockchainVerification.verified,
+
+        status:
+          blockchainVerification.verified
+            ? "VERIFIED"
+            : "TAMPERED",
+
+        recordId:
+          record._id.toString(),
+
+        recordHash:
+          record.fileHash,
+
+        transactionDigest:
+          record.blockchainTxDigest,
+
+        packageId:
+          record.blockchainPackageId,
+
+        network:
+          record.blockchainNetwork,
+
+        message:
+          blockchainVerification.verified
+            ? "Medical record blockchain transaction verified successfully"
+            : "Medical record blockchain verification failed",
+      },
+    });
+  } catch (error) {
+    console.error(
+      "❌ Blockchain verification error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      error: {
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to verify medical record on blockchain",
       },
     });
   }

@@ -6,6 +6,7 @@ import authRoutes from "./routes/auth.routes.js";
 import recordRoutes from "./routes/record.routes.js";
 import accessRequestRoutes from "./routes/accessRequest.routes.js";
 import auditLogRoutes from "./routes/auditLog.routes.js";
+import walletRoutes from "./routes/wallet.routes.js";
 
 const app = express();
 
@@ -35,6 +36,7 @@ app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/records", recordRoutes);
 app.use("/api/v1/access-requests", accessRequestRoutes);
 app.use("/api/v1/audit-logs", auditLogRoutes);
+app.use("/api/v1/wallet", walletRoutes);
 
 // 404 handler
 app.use((req, res) => {
