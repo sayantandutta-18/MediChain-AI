@@ -25,6 +25,8 @@ import {
   storeHashOnSui,
   verifyRecordOnSui,
 } from "../blockchain/sui.service.js";
+
+
 import User from "../models/user.js";
 
 
@@ -580,174 +582,87 @@ export const getRecord = async (
   res: Response
 ) => {
   try {
-    console.log(
-      "📄 GET SINGLE RECORD CONTROLLER HIT"
-    );
+    console.log("📄 GET SINGLE RECORD CONTROLLER HIT");
 
-    // Get record ID from URL
-    const idParam =
-      req.params.id;
+    const idParam = req.params.id;
+    const id = Array.isArray(idParam) ? idParam[0] : idParam;
 
-    const id =
-      Array.isArray(idParam)
-        ? idParam[0]
-        : idParam;
-
-    // Check record ID
     if (!id) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          message:
-            "Record ID is required",
-        },
-      });
+      return res.status(400).json({ success: false, error: { message: "Record ID is required" } });
     }
 
-    // Get patient ID from JWT
-    const patientId =
-      (req as any).user.userId;
+    const userId = req.user?.userId;
+    const role = req.user?.role;
 
-    console.log(
-      "👤 Patient ID:",
-      patientId
-    );
+    if (!userId || !role) {
+      return res.status(401).json({ success: false, error: { message: "Authentication required" } });
+    }
 
-    console.log(
-      "📄 Record ID:",
-      id
-    );
+    console.log("👤 User ID:", userId);
+    console.log("🔑 Role:", role);
+    console.log("📄 Record ID:", id);
 
-    // =================================================
-    // FIND RECORD
-    // =================================================
-
-    const record =
-      await getMedicalRecordById(id);
+    const record = await getMedicalRecordById(id);
 
     if (!record) {
-      return res.status(404).json({
-        success: false,
-        error: {
-          message:
-            "Medical record not found",
-        },
-      });
+      return res.status(404).json({ success: false, error: { message: "Medical record not found" } });
     }
 
-    console.log(
-      "✅ Record found"
-    );
+    const recordPatientId = record.patientId.toString();
 
-    // =================================================
-    // OWNERSHIP CHECK
-    // =================================================
+    if (role === "PATIENT") {
+      if (recordPatientId !== userId) {
+        return res.status(403).json({ success: false, error: { message: "You are not authorized to access this record" } });
+      }
+      console.log("🔐 Patient ownership verified");
+    } else if (role === "DOCTOR") {
+      console.log("👨‍⚕️ Checking doctor-patient access...");
+      const hasAccess = await checkDoctorPatientAccess(userId, recordPatientId);
+      console.log("🔐 Doctor access result:", hasAccess);
 
-    if (
-      record.patientId.toString() !==
-      patientId
-    ) {
-      console.log(
-        "🚫 Unauthorized record access attempt"
-      );
-
-      return res.status(403).json({
-        success: false,
-        error: {
-          message:
-            "You are not authorized to access this record",
-        },
-      });
+      if (!hasAccess) {
+        console.log("🚫 Doctor does not have approved access");
+        return res.status(403).json({ success: false, error: { message: "You do not have approved access to this patient's records" } });
+      }
+      console.log("🔐 Doctor approved access verified");
+    } else {
+      return res.status(403).json({ success: false, error: { message: "Your role is not authorized to access medical records" } });
     }
-
-    console.log(
-      "🔐 Ownership verified"
-    );
-
-    // =================================================
-    // AUDIT LOG
-    // =================================================
 
     await createAuditLog({
-      userId: patientId,
-      role: req.user!.role,
+      userId,
+      role,
       action: "RECORD_VIEWED",
-
       recordId: record._id.toString(),
       patientId: record.patientId.toString(),
-
+      ...(role === "DOCTOR" && { doctorId: userId }),
       status: "SUCCESS",
-
       ipAddress: req.ip,
       userAgent: req.get("user-agent"),
-
-      metadata: {
-        title: record.title,
-        type: record.type,
-      },
+      metadata: { title: record.title, type: record.type },
     });
-
-
-    // =================================================
-    // RETURN METADATA ONLY
-    // =================================================
 
     return res.status(200).json({
       success: true,
-
       record: {
-        id: record._id,
-        patientId:
-          record.patientId,
-        title:
-          record.title,
-        type:
-          record.type,
-        date:
-          record.date,
-        provider:
-          record.provider,
-        hospital:
-          record.hospital,
-        summary:
-          record.summary,
-        fileHash:
-          record.fileHash,
-        encrypted:
-          record.encrypted,
-
+        id: record._id, patientId: record.patientId, title: record.title,
+        type: record.type, date: record.date, provider: record.provider,
+        hospital: record.hospital, summary: record.summary,
+        fileHash: record.fileHash, encrypted: record.encrypted,
         blockchain: {
-          network:
-            record.blockchainNetwork,
-          packageId:
-            record.blockchainPackageId,
-          transactionDigest:
-            record.blockchainTxDigest,
-          objectId:
-            record.blockchainObjectId,
+          network: record.blockchainNetwork,
+          packageId: record.blockchainPackageId,
+          transactionDigest: record.blockchainTxDigest,
+          objectId: record.blockchainObjectId,
         },
-
-        createdAt:
-          record.createdAt,
-        updatedAt:
-          record.updatedAt,
+        createdAt: record.createdAt, updatedAt: record.updatedAt,
       },
     });
-
   } catch (error) {
-    console.error(
-      "❌ Get single record error:",
-      error
-    );
-
+    console.error("❌ Get single record error:", error);
     return res.status(500).json({
       success: false,
-      error: {
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to fetch medical record",
-      },
+      error: { message: error instanceof Error ? error.message : "Failed to fetch medical record" },
     });
   }
 };

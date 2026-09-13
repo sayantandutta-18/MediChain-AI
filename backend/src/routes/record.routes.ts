@@ -1,9 +1,7 @@
 import { Router } from "express";
 
 import { authenticate } from "../middleware/auth.middleware.js";
-
 import { authorize } from "../middleware/role.middleware.js";
-
 import { upload } from "../middleware/upload.middleware.js";
 
 import {
@@ -19,10 +17,10 @@ import {
 
 const router = Router();
 
-
 // =====================================================
 // CREATE MEDICAL RECORD
 // POST /api/v1/records
+// PATIENT ONLY
 // =====================================================
 
 router.post(
@@ -68,10 +66,10 @@ router.post(
   createRecord
 );
 
-
 // =====================================================
 // GET ALL MEDICAL RECORDS
 // GET /api/v1/records
+// PATIENT ONLY
 // =====================================================
 
 router.get(
@@ -81,10 +79,10 @@ router.get(
   getRecords
 );
 
-
 // =====================================================
 // GET PATIENT MEDICAL RECORDS FOR DOCTOR
 // GET /api/v1/records/patient/:patientId
+// DOCTOR ONLY
 // =====================================================
 
 router.get(
@@ -94,10 +92,10 @@ router.get(
   getPatientRecordsForDoctor
 );
 
-
 // =====================================================
 // VERIFY MEDICAL RECORD ON SUI BLOCKCHAIN
 // GET /api/v1/records/:id/verify
+// PATIENT ONLY
 // =====================================================
 
 router.get(
@@ -107,10 +105,10 @@ router.get(
   verifyRecord
 );
 
-
 // =====================================================
 // UPDATE MEDICAL RECORD
 // PUT /api/v1/records/:id
+// PATIENT ONLY
 // =====================================================
 
 router.put(
@@ -120,10 +118,10 @@ router.put(
   updateRecord
 );
 
-
 // =====================================================
 // DELETE MEDICAL RECORD
 // DELETE /api/v1/records/:id
+// PATIENT ONLY
 // =====================================================
 
 router.delete(
@@ -133,10 +131,11 @@ router.delete(
   deleteRecord
 );
 
-
 // =====================================================
 // DOWNLOAD MEDICAL RECORD
 // GET /api/v1/records/:id/download
+// PATIENT + DOCTOR
+// Access is checked inside controller
 // =====================================================
 
 router.get(
@@ -146,18 +145,18 @@ router.get(
   downloadRecord
 );
 
-
 // =====================================================
 // GET SINGLE MEDICAL RECORD
 // GET /api/v1/records/:id
+//
+// PATIENT → own record only
+// DOCTOR  → approved/non-expired access only
 // =====================================================
 
 router.get(
   "/:id",
   authenticate,
-  authorize("PATIENT"),
   getRecord
 );
-
 
 export default router;

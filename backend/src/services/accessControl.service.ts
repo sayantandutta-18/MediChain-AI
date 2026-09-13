@@ -13,23 +13,18 @@ export const checkDoctorPatientAccess = async (
     throw new Error("Invalid patient ID");
   }
 
+  const now = new Date();
+
   const accessRequest = await AccessRequest.findOne({
     doctorId,
     patientId,
     status: "APPROVED",
-  });
+    $or: [
+      { expiresAt: { $exists: false } },
+      { expiresAt: null },
+      { expiresAt: { $gt: now } },
+    ],
+  }).lean();
 
-  if (!accessRequest) {
-    return false;
-  }
-
-  // Check whether access has expired
-  if (
-    accessRequest.expiresAt &&
-    accessRequest.expiresAt.getTime() <= Date.now()
-  ) {
-    return false;
-  }
-
-  return true;
+  return !!accessRequest;
 };
