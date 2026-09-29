@@ -1,367 +1,931 @@
+Absolutely. Based on the **actual project ZIP you uploaded**, here is a GitHub-ready README that matches the current project structure and functionality.
+
+````markdown
 # MediChain-AI
 
-**Patient-controlled medical records with encryption, cryptographic integrity verification, Sui blockchain anchoring and AI-assisted report understanding.**
+> **Patient-controlled medical records with encryption, cryptographic integrity verification, Sui blockchain anchoring, consent-based access control, auditability, and AI-assisted report understanding.**
 
-> A production-style full-stack MVP / portfolio project — **not** a certified clinical, diagnostic or
-> regulatory system. See [Honest limitations](#honest-limitations).
+MediChain-AI is a production-style full-stack healthcare MVP designed around one core principle:
 
+> **Patients should control who can access their medical records.**
+
+The platform combines secure backend architecture, encrypted medical-record storage, SHA-256 integrity verification, Sui blockchain anchoring, doctor-patient consent workflows, audit logging, and an AI assistant for easier understanding of medical reports.
+
+> ⚠️ **Disclaimer:** MediChain-AI is a portfolio/hackathon MVP and is **not a certified clinical, diagnostic, regulatory, or hospital-management system**. AI-generated information is intended only for understanding and does not replace qualified medical advice.
+
+---
+
+## ✨ Key Features
+
+### 🔐 Secure Authentication
+
+- JWT-based authentication
+- bcrypt password hashing
+- Role-based access control
+- Patient and Doctor roles
+- Token expiry validation
+- Protected API routes
+- Secure logout/session handling
+
+### 🏥 Medical Records
+
+Patients can:
+
+- Upload medical records
+- View their records
+- Update record metadata
+- Download original files
+- Delete their own records
+- Verify record integrity
+
+Supported record categories include:
+
+- Lab reports
+- Prescriptions
+- Imaging
+- Discharge summaries
+- Vaccination records
+- Other medical documents
+
+---
+
+## 🔒 Medical Data Security
+
+Medical documents are protected using:
+
+```text
+Medical File
+     ↓
+File Validation
+     ↓
+SHA-256 Hash
+     ↓
+AES-256-GCM Encryption
+     ↓
+MongoDB
+````
+
+The plaintext medical document is never written directly to the database.
+
+The encryption key remains server-side and is never returned through the API.
+
+---
+
+## ⛓️ Sui Blockchain Integrity Verification
+
+MediChain-AI does **not** store medical documents on the blockchain.
+
+Instead:
+
+```text
+Medical Document
+       ↓
+     SHA-256
+       ↓
+   MongoDB Hash
+       ↓
+  Sui Blockchain
+       ↓
+On-chain Hash
 ```
-React + TypeScript  →  REST/HTTPS  →  Express + TypeScript  →  JWT · RBAC · Consent
-                                                    ↓
-                        AES-256-GCM · SHA-256 · MongoDB · Sui Testnet · AI · Audit
+
+The system can later compare:
+
+```text
+MongoDB Hash
+     ==
+On-chain Hash
+```
+
+If they match:
+
+```text
+✅ VERIFIED
+```
+
+If they differ:
+
+```text
+❌ MISMATCH
+```
+
+The Sui Move contract creates a `MedicalRecordAnchor` containing integrity metadata such as:
+
+* Record ID
+* SHA-256 hash
+* Patient identifier
+* Creation timestamp
+
+---
+
+## 👨‍⚕️ Patient-Controlled Doctor Access
+
+Doctors cannot automatically access patient records.
+
+The workflow is:
+
+```text
+Doctor
+   ↓
+Request Access
+   ↓
+Patient
+   ↓
+Approve / Reject
+   ↓
+Approved
+   ↓
+Doctor can View / Download
+   ↓
+Expiry or Revocation
+   ↓
+Access Blocked
+```
+
+Access states:
+
+```text
+PENDING
+APPROVED
+REJECTED
+REVOKED
+EXPIRED
+```
+
+An authenticated doctor without valid consent still receives:
+
+```text
+403 Forbidden
 ```
 
 ---
 
-## What it does
+## 📜 Audit Logging
 
-| Capability | Implementation |
-| --- | --- |
-| Authentication | JWT bearer tokens, bcrypt password hashing, issuer/audience/expiry enforced |
-| Authorization | Role checks **and** resource-ownership/consent checks, always on the server |
-| Record security | AES-256-GCM encryption applied *before* anything is persisted |
-| Integrity | SHA-256 digest per document, stored in MongoDB and anchored on chain |
-| Blockchain | Sui Testnet via `SuiGrpcClient` + a Move `MedicalRecordAnchor` object |
-| Consent | Doctor requests → patient approves with an expiry, or rejects; revocable any time |
-| Audit | Append-only trail of auth, CRUD, download, consent and AI events |
-| AI | Server-side OpenAI call, structured output, controlled error when unconfigured |
-| UI | React + Vite + Tailwind + Framer Motion + React Three Fiber |
+Important security-sensitive actions are recorded in an audit trail.
 
-The medical document is **never** written to the blockchain. Only the SHA-256 digest and opaque ids are
-anchored (scope boundary, PRD §4).
+Examples:
+
+* User registration
+* Login
+* Failed login
+* Logout
+* Record upload
+* Record view
+* Record download
+* Record update
+* Record deletion
+* Blockchain verification
+* Access request
+* Access approval
+* Access rejection
+* Access revocation
+* AI analysis
+
+The audit system records information such as:
+
+* Actor
+* Role
+* Action
+* Resource
+* Result
+* Timestamp
+* Request metadata
+
+Audit access is scoped to the authenticated user.
 
 ---
 
-## Repository layout
+## 🤖 AI Medical Report Assistant
 
+MediChain-AI includes a server-side AI layer for helping users understand medical reports.
+
+The AI can provide:
+
+* Report summary
+* Key findings
+* Medical terminology explanations
+* Patient-friendly explanation
+* Suggested questions for a healthcare professional
+* General urgency categorization
+
+Example flow:
+
+```text
+Medical Record
+      ↓
+Backend Authorization
+      ↓
+AI Service
+      ↓
+Structured AI Response
+      ↓
+Patient-Friendly Explanation
 ```
-.
-├── backend/            Express + TypeScript API
+
+The OpenAI credential remains on the backend.
+
+The frontend never receives the provider API key.
+
+### Important
+
+The AI is an **assistive explanation system**, not a diagnostic or prescription system.
+
+---
+
+# 🏗️ System Architecture
+
+```text
+                   ┌──────────────────────┐
+                   │      React UI        │
+                   │  TypeScript + Vite   │
+                   └──────────┬───────────┘
+                              │
+                         REST / HTTPS
+                              │
+                   ┌──────────▼───────────┐
+                   │   Express Backend    │
+                   │     TypeScript       │
+                   └──────────┬───────────┘
+                              │
+              ┌───────────────┼────────────────┐
+              │               │                │
+              ▼               ▼                ▼
+        Authentication    RBAC/Consent       AI
+              │               │                │
+              └───────────────┼────────────────┘
+                              │
+                      ┌───────▼────────┐
+                      │    Services    │
+                      └───────┬────────┘
+                              │
+                ┌─────────────┼──────────────┐
+                │             │              │
+                ▼             ▼              ▼
+           MongoDB        Encryption       Sui
+           Atlas          + SHA-256       Testnet
+                │                            │
+                └────────────┬───────────────┘
+                             ▼
+                        Audit Logs
+```
+
+---
+
+# 🛠️ Technology Stack
+
+## Frontend
+
+* React
+* TypeScript
+* Vite
+* Tailwind CSS
+* React Router
+* Axios
+* Framer Motion
+* React Three Fiber
+* Three.js
+* Drei
+* Lucide React
+* Recharts
+
+## Backend
+
+* Node.js
+* Express.js
+* TypeScript
+* MongoDB
+* Mongoose
+* JWT
+* bcrypt
+* Zod
+* Multer
+* Helmet
+* CORS
+* Rate limiting
+
+## Security
+
+* AES-256-GCM
+* SHA-256
+* JWT
+* bcrypt
+* RBAC
+* Resource ownership validation
+* Consent-based authorization
+
+## Blockchain
+
+* Sui
+* Sui Testnet
+* SuiGrpcClient
+* Move
+* `MedicalRecordAnchor`
+
+## AI
+
+* OpenAI API
+* Server-side AI service
+* Structured report analysis
+
+## Testing
+
+* Jest
+* Supertest/integration testing
+* Security regression tests
+* HTTP smoke tests
+
+## DevOps
+
+* Docker
+* Docker Compose
+* GitHub Actions
+* Nginx
+
+---
+
+# 📁 Project Structure
+
+```text
+MediChain-AI/
+│
+├── backend/
 │   ├── src/
-│   │   ├── blockchain/ Sui client (gRPC + JSON-RPC)
-│   │   ├── config/      env + database
-│   │   ├── controllers/ HTTP concerns only
-│   │   ├── middleware/  auth, RBAC, validation, upload, rate limit, errors
-│   │   ├── models/      Mongoose schemas
-│   │   ├── routes/      /api/v1 surface
-│   │   ├── services/    reusable business logic
-│   │   ├── utils/       crypto, hashing, JWT, errors
-│   │   ├── validators/  zod schemas
-│   │   ├── app.ts       express app assembly
-│   │   └── server.ts    boot + graceful shutdown
-│   ├── tests/           unit + integration + security regression
-│   └── scripts/         smoke.js — end-to-end HTTP check
-├── frontend/           React + TypeScript + Vite client
-│   └── src/
-│       ├── api/          centralised axios client + per-module clients
-│       ├── components/   layout, ui, records, three
-│       ├── context/      AuthContext
-│       ├── pages/        landing, auth, dashboard, records, access, verification, audit, AI, profile
-│       ├── routes/       router + guards
-│       ├── types/        shared types
-│       └── utils/        formatting + status styles
-├── sui/                Move package for the integrity anchor
-├── scripts/            dev runner, build/test/typecheck helpers (no npm nesting)
-├── docs/API.md         full REST reference
-└── docker-compose.yml  mongo + api + web
+│   │   ├── blockchain/
+│   │   │   └── suiClient.ts
+│   │   │
+│   │   ├── config/
+│   │   │   ├── database.ts
+│   │   │   └── env.ts
+│   │   │
+│   │   ├── controllers/
+│   │   ├── middleware/
+│   │   ├── models/
+│   │   ├── routes/
+│   │   ├── services/
+│   │   ├── types/
+│   │   ├── utils/
+│   │   ├── validators/
+│   │   ├── app.ts
+│   │   └── server.ts
+│   │
+│   ├── tests/
+│   ├── Dockerfile
+│   ├── package.json
+│   └── tsconfig.json
+│
+├── frontend/
+│   ├── src/
+│   │   ├── api/
+│   │   ├── components/
+│   │   ├── context/
+│   │   ├── pages/
+│   │   ├── routes/
+│   │   ├── types/
+│   │   ├── utils/
+│   │   ├── App.tsx
+│   │   └── index.css
+│   │
+│   ├── public/
+│   ├── Dockerfile
+│   ├── nginx.conf
+│   └── package.json
+│
+├── sui/
+│   ├── sources/
+│   │   └── medical_record_anchor.move
+│   ├── Move.toml
+│   └── README.md
+│
+├── docs/
+│   └── API.md
+│
+├── scripts/
+│   ├── dev.js
+│   ├── build.js
+│   ├── typecheck.js
+│   ├── run.js
+│   └── smoke.js
+│
+├── docker-compose.yml
+├── package.json
+├── .gitignore
+└── README.md
 ```
 
 ---
 
-## Quick start
+# 🚀 Getting Started
+
+## Prerequisites
+
+Install:
+
+* Node.js 20+
+* MongoDB or MongoDB Atlas
+* Git
+* Sui CLI if working with the Move package
+
+---
+
+## Installation
+
+Clone the repository:
+
+```bash
+git clone https://github.com/YOUR_USERNAME/MediChain-AI.git
+cd MediChain-AI
+```
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Then configure the backend environment.
+
+---
+
+# 🔑 Environment Configuration
+
+Create:
+
+```text
+backend/.env
+```
+
+Example:
+
+```env
+PORT=4000
+
+MONGODB_URI=your_mongodb_connection_string
+
+JWT_SECRET=your_jwt_secret
+JWT_EXPIRES_IN=2h
+
+ENCRYPTION_KEY=your_encryption_key
+
+CORS_ORIGIN=http://localhost:5173
+
+SUI_NETWORK=testnet
+SUI_PACKAGE_ID=
+SUI_REGISTRY_ID=
+SUI_ENV_MNEMONIC=
+
+OPENAI_API_KEY=
+```
+
+### ⚠️ Never commit `.env`
+
+Never upload:
+
+```text
+.env
+private keys
+mnemonics
+JWT secrets
+encryption keys
+OpenAI API keys
+```
+
+Use `.env.example` for safe configuration documentation.
+
+---
+
+# ▶️ Running the Project
+
+From the project root:
 
 ```bash
 npm install
 npm run dev
 ```
 
-That is it. `npm run dev` creates `backend/.env` with freshly generated secrets if it does not exist,
-checks that the ports are free, then starts both servers:
+The development environment starts:
 
-- **Frontend** → <http://localhost:5173>
-- **Backend** → <http://localhost:4000> (health: <http://localhost:4000/api/v1/health>)
+```text
+Frontend
+http://localhost:5173
 
-It prints a `Ready` banner with the exact URL when both are up. Keep the terminal open, then register an
-account in the browser.
+Backend
+http://localhost:4000
+```
 
-### Prerequisites
+Health endpoint:
 
-- **Node.js 20+**
-- **MongoDB** running locally — Windows: `net start MongoDB`, macOS: `brew services start mongodb-community`,
-  Linux: `sudo systemctl start mongod` — **or** a MongoDB Atlas connection string.
+```text
+GET /api/v1/health
+```
 
-If MongoDB is not running, the API prints exactly what to do and exits; the frontend then shows an orange
-"Backend is not running" banner with the fix instead of a raw "Bad gateway".
+---
 
-### Optional configuration
+# 🧪 Testing
 
-Everything below has a working default, so you can skip it entirely.
-
-| To enable | Do this |
-| --- | --- |
-| MongoDB Atlas | set `MONGODB_URI` in `backend/.env` |
-| Real Sui anchoring | set `SUI_PACKAGE_ID` / `SUI_REGISTRY_ID` — see [`sui/README.md`](sui/README.md) |
-| AI assistant | set `OPENAI_API_KEY` in `backend/.env` |
-
-To reset the configuration, delete `backend/.env` and run `npm run setup`.
-
-### Running one server at a time
+Run the complete test suite:
 
 ```bash
-npm run dev:backend    # API only,  with watch-reload
-npm run dev:frontend   # web client only
+npm test
 ```
 
-### Other commands
+Coverage:
 
 ```bash
-npm run setup          # create backend/.env with generated secrets (idempotent)
-npm test               # 97 unit + integration + security regression tests
-npm run test:coverage  # coverage report
-npm run smoke          # boots the built server and walks the full flow over HTTP
-npm run build          # production build of both apps
-npm run typecheck      # strict TypeScript check for both apps
+npm run test:coverage
 ```
 
-> **Note on the root scripts.** Every root script is a plain `node scripts/*.js` file rather than an
-> `npm run --workspace ...` chain. Some Windows Node installations ship no `npm.cmd` next to `node.exe`
-> (only `npm` and `npm.ps1`), which makes any script that shells out to `npm` again fail with
-> `'npm' is not recognized`. Running the binaries directly avoids that class of failure entirely.
-
----
-
-## Troubleshooting
-
-| Symptom | Cause | Fix |
-| --- | --- | --- |
-| "Bad gateway" / "Backend is not running" banner | API process is not running | Run `npm run dev` from the project root and **keep the terminal open** |
-| `Cannot start - ports already in use` | Another dev server is running | Use the already-running one, or `Get-Process node \| Stop-Process -Force` |
-| `localhost:5173` fails but the server is running | IPv6/IPv4 mismatch on Windows | Already handled: the dev server listens on all interfaces. If it persists, use <http://127.0.0.1:5173> |
-| API exits: "Could not connect to MongoDB" | No database reachable | `net start MongoDB` (Windows), or start Docker/Atlas and set `MONGODB_URI` |
-| `'npm' is not recognized` inside a script | Broken Node install without `npm.cmd` | Root scripts no longer shell out to npm; if you add your own, use `node scripts/...` |
-| Port 4000 already in use | Another process owns it | Stop it, or change `PORT` in `backend/.env` |
-| AI assistant shows "Offline" | No `OPENAI_API_KEY` | Expected by default — add the key to enable it |
-| Verification shows "Chain unavailable" | Sui Move package not published | Expected by default — see [`sui/README.md`](sui/README.md) |
-
----
-
-## Walkthrough (2-minute demo)
-
-1. **Register a patient** and **a doctor** (use a second browser or an incognito window).
-2. As the **patient**: upload a `.txt`/`.pdf` record.
-   → The API computes SHA-256, encrypts with AES-256-GCM, stores the ciphertext, and anchors the digest.
-3. Open **Verification** → the record shows its stored digest and anchor status.
-4. As the **doctor**: open **Access requests** → pick the patient → state a clinical reason → send.
-5. As the **patient**: approve with a duration (e.g. 7 days).
-6. As the **doctor**: the record is now listed, viewable and downloadable. Try to delete it → **403**.
-7. As the **patient**: revoke access → the doctor's record disappears immediately.
-8. Open **Audit trail** on both accounts → every action above, including the denied attempts.
-
----
-
-## Security model
-
-### Record lifecycle
-
-```
-multipart upload
-  → type + size validation
-  → SHA-256(plaintext)                    ← the digest that will be anchored
-  → AES-256-GCM(plaintext)                ← what actually gets stored
-  → MongoDB persist (ciphertext + metadata)
-  → Sui anchor(store digest, record id, patient id)
-  → persist transaction/object metadata
-  → audit event
-```
-
-Download is the mirror image: `authenticate → authorize → fetch ciphertext → decrypt → respond → audit`.
-
-### Authorization rules
-
-| Actor | Rule |
-| --- | --- |
-| Patient | May read/write/delete **only their own** records |
-| Doctor | Requires an `APPROVED` **and** unexpired `AccessRequest` |
-| Doctor | Never permitted to update or delete a patient record |
-| `REJECTED` / `REVOKED` / expired | Never authorize a protected operation |
-| Audit endpoints | A caller only ever sees their own trail |
-
-Authentication alone never grants access. Role checks and ownership/consent checks are separate concerns and
-both run server-side; the frontend role checks are cosmetic.
-
-### Hardening in place
-
-Helmet headers · restricted CORS (no wildcards) · rate limiting (stricter on auth) · bcrypt password
-hashing · memory-only uploads with a MIME allow-list and size cap · zod validation on body/query/params ·
-constant-ish-time login comparison · centralised error envelope that never leaks stack traces or DB details ·
-keys sourced from the environment and never returned by the API.
-
-### CORS and reverse proxies
-
-Browsers send an `Origin` header on **every** non-GET request — including same-origin ones sent to
-`/api` through nginx. The API therefore accepts a request when the origin is on the `CORS_ORIGIN`
-allow-list **or** matches the host the request was made to (via `Host` / `X-Forwarded-Host`). A genuinely
-disallowed cross-origin write is rejected with a clean `403 CORS_ORIGIN_DENIED` rather than a 500.
-
----
-
-## Blockchain anchoring
-
-The digest is anchored, never the document.
-
-```move
-// sui/sources/medical_record_anchor.move
-public struct MedicalRecordAnchor has key, store {
-    id: UID,
-    record_id: String,
-    record_hash: String,   // SHA-256 hex
-    patient: String,
-    created_at: u64,
-}
-```
-
-Publish it and point the backend at it — see [`sui/README.md`](sui/README.md):
-
-```env
-SUI_NETWORK=testnet
-SUI_PACKAGE_ID=0x...
-SUI_REGISTRY_ID=0x...
-SUI_ENV_MNEMONIC=...      # runtime only, never committed
-```
-
-### Verification results
-
-| Status | Meaning |
-| --- | --- |
-| `VERIFIED` | The digest read back from chain equals the digest in MongoDB |
-| `MISMATCH` | The digests differ — the record no longer matches its anchor |
-| `NOT_ANCHORED` | The record has no anchor yet |
-| `UNAVAILABLE` | The digests agree locally, but the chain could not be read (package not configured / node unreachable) |
-
-`UNAVAILABLE` is deliberate. The system reports what it can actually prove rather than implying a
-blockchain-backed guarantee it does not have.
-
----
-
-## AI assistant
-
-`POST /api/v1/ai/analyze` — the browser calls the backend, the backend calls the provider. **The provider key
-never reaches the client.**
-
-Structured output: `summary`, `keyFindings[]`, `terminology[]`, `patientFriendlyExplanation`,
-`suggestedQuestions[]`, `urgency`, plus a mandatory disclaimer. The prompt explicitly forbids diagnosis and
-prescription, and the response is re-validated and clamped before it is returned.
-
-If no key is configured the endpoint returns `503 AI_NOT_CONFIGURED` — a controlled error, not a crash.
-
----
-
-## Testing
+TypeScript checks:
 
 ```bash
-npm test                  # 97 tests
-npm run test:coverage     # coverage report
-npm run smoke             # real HTTP end-to-end flow
+npm run typecheck
 ```
 
-**Unit** — encryption (round-trip, unique IV, tamper detection), SHA-256, JWT, extraction helpers.
-
-**Integration** — auth, record CRUD/upload/download, access-request lifecycle, audit authorization, AI
-controlled failure, health.
-
-**Security regression** (the cases that matter most):
-
-| Scenario | Expected |
-| --- | --- |
-| Approved, unexpired doctor reads a record | `200` |
-| Doctor with a pending request reads | `403 ACCESS_PENDING` |
-| Doctor who never requested reads | `403 NO_ACCESS` |
-| Doctor reads after revocation | `403` |
-| Doctor reads after expiry | `403 ACCESS_EXPIRED` |
-| Patient B reads patient A's record | `403` |
-| Doctor updates/deletes a patient record | `403` |
-| Missing / invalid / tampered JWT | `401` |
-| One approved doctor inheriting another's access | `403` |
-| Audit trail of another actor | empty |
-| Same-origin write through a reverse proxy | allowed |
-| Disallowed cross-origin write | `403 CORS_ORIGIN_DENIED` |
-
----
-
-## Deployment
+Build:
 
 ```bash
-cp backend/.env.example .env    # fill in secrets
-docker compose up --build
+npm run build
 ```
 
-- `api` → <http://localhost:4000> (health: `/api/v1/health`)
-- `web` → <http://localhost:8080> (nginx, SPA fallback, same-origin `/api` proxy)
-- `mongodb` → local instance; swap `MONGODB_URI` for MongoDB Atlas in production
+Smoke test:
 
-All secrets are injected at runtime. `.env` is git-ignored; nothing sensitive is baked into an image.
-
-For production, terminate TLS in front of both services and set `CORS_ORIGIN` to your exact origin.
+```bash
+npm run smoke
+```
 
 ---
 
-## Configuration reference
+# 🔐 Security Model
 
-| Variable | Default | Notes |
-| --- | --- | --- |
-| `PORT` | `4000` | API port |
-| `MONGODB_URI` | `mongodb://127.0.0.1:27017/medichain` | Local or Atlas |
-| `JWT_SECRET` | — | **Required in production** (≥32 chars) |
-| `JWT_EXPIRES_IN` | `2h` | Token lifetime |
-| `ENCRYPTION_KEY` | — | 64 hex chars (32 bytes) |
-| `ENCRYPTION_PASSPHRASE` | falls back to JWT secret | Used to derive a key if `ENCRYPTION_KEY` is empty |
-| `MAX_FILE_SIZE_MB` | `10` | Upload cap |
-| `ALLOWED_MIME_TYPES` | pdf, png, jpeg, txt, json, csv | Upload allow-list |
-| `CORS_ORIGIN` | `http://localhost:5173` | Comma-separated, no wildcards |
-| `RATE_LIMIT_MAX` | `300` / 15 min | Global API limit |
-| `AUTH_RATE_LIMIT_MAX` | `20` / 15 min | Auth endpoint limit |
-| `SUI_NETWORK` | `testnet` | `testnet` / `mainnet` / `devnet` |
-| `SUI_PACKAGE_ID` | — | Empty ⇒ simulated anchors |
-| `SUI_REGISTRY_ID` | — | Shared `MedicalRecordRegistry` id |
-| `OPENAI_API_KEY` | — | Empty ⇒ controlled `503` |
-| `OPENAI_MODEL` | `gpt-4o-mini` | AI model |
+## Patient
 
----
+A patient can:
 
-## API
+```text
+Read own records
+Create own records
+Update own records
+Delete own records
+Download own records
+Verify own records
+Approve doctor access
+Reject doctor access
+Revoke doctor access
+```
 
-Full reference: [`docs/API.md`](docs/API.md). Every success response uses
-`{ "success": true, "data": ... }` and every error uses
-`{ "success": false, "error": { "code", "message", "details? } }`.
+## Doctor
 
----
+A doctor requires:
 
-## Honest limitations
+```text
+Authenticated
+     +
+DOCTOR role
+     +
+APPROVED access request
+     +
+Access not expired
+```
 
-- **Not a medical device.** The AI explains documents; it does not diagnose or treat.
-- **Not regulatory compliant.** No HIPAA/GDPR certification, no formal risk management, no penetration test.
-- **Text extraction is limited.** The AI reads `txt`/`csv`/`json`/`markdown` inline; PDFs and images are
-  stored and served but not parsed.
-- **Simulated anchors by default.** Real chain verification requires publishing the Move package and
-  supplying funded testnet keys.
-- **Key rotation is not implemented.** `ENCRYPTION_KEY_VERSION` is recorded per record, but there is no
-  re-encryption job yet.
-- **No refresh tokens.** Sessions end with the access token; a password change re-issues one.
-- **No document versioning.** Editing metadata does not re-hash the file.
+Only then can the doctor access the patient's protected records.
+
+Doctors cannot update or delete patient records under the current authorization policy.
 
 ---
 
-## Tech stack
+# 🔄 Medical Record Lifecycle
 
-**Backend** — Node.js · Express · TypeScript · Mongoose · Zod · jsonwebtoken · bcryptjs · Helmet ·
-express-rate-limit · Multer · OpenAI SDK · `@mysten/sui` (`SuiGrpcClient` + JSON-RPC)
-**Frontend** — React 18 · TypeScript · Vite · React Router · Tailwind · Framer Motion ·
-React Three Fiber / Drei · Lucide · Axios
-**Testing** — Jest · Supertest · `mongodb-memory-server`
-**Infrastructure** — Docker · nginx · MongoDB Atlas
+```text
+                 Upload
+                    │
+                    ▼
+             File Validation
+                    │
+                    ▼
+               SHA-256
+                    │
+                    ├──────────────┐
+                    ▼              │
+            AES-256-GCM            │
+              Encryption           │
+                    │              │
+                    ▼              │
+               MongoDB             │
+                    │              │
+                    └──────┬───────┘
+                           ▼
+                    Sui Blockchain
+                           │
+                           ▼
+                    Anchor Metadata
+                           │
+                           ▼
+                     Audit Event
+```
 
 ---
 
-## License
+# ⛓️ Blockchain Verification Flow
 
-MIT — for portfolio and educational use.
+```text
+MongoDB
+   │
+   │ stored SHA-256
+   ▼
+   ┌──────────────┐
+   │ Hash Compare │
+   └──────┬───────┘
+          │
+          ▲
+          │ on-chain hash
+          │
+     Sui Testnet
+```
+
+Result:
+
+```text
+MongoDB Hash == On-chain Hash
+              ↓
+          VERIFIED
+```
+
+---
+
+# 🩺 AI Safety
+
+MediChain-AI's AI assistant is designed for:
+
+```text
+Understanding
+     ↓
+Summarization
+     ↓
+Terminology Explanation
+     ↓
+Patient-Friendly Information
+```
+
+It is **not designed to:
+
+* diagnose disease
+* prescribe medication
+* replace doctors
+* provide emergency medical decisions
+
+````
+
+---
+
+# 🐳 Docker
+
+The project includes:
+
+```text
+backend/Dockerfile
+frontend/Dockerfile
+docker-compose.yml
+````
+
+Build:
+
+```bash
+docker compose build
+```
+
+Run:
+
+```bash
+docker compose up
+```
+
+Stop:
+
+```bash
+docker compose down
+```
+
+---
+
+# 🧪 Example Demo Flow
+
+### Patient
+
+```text
+Register
+   ↓
+Login
+   ↓
+Upload Medical Record
+   ↓
+Record encrypted
+   ↓
+SHA-256 generated
+   ↓
+Hash anchored on Sui
+```
+
+### Doctor
+
+```text
+Login
+   ↓
+Find Patient
+   ↓
+Request Access
+```
+
+### Patient
+
+```text
+Access Request
+   ↓
+Approve
+   ↓
+Choose expiry duration
+```
+
+### Doctor
+
+```text
+Approved Access
+   ↓
+View Record
+   ↓
+Download Record
+   ↓
+Verify Blockchain Integrity
+```
+
+### Patient
+
+```text
+Revoke Access
+   ↓
+Doctor loses access
+```
+
+Every important action is recorded in the audit trail.
+
+---
+
+# 📊 API Documentation
+
+Detailed REST API documentation is available in:
+
+```text
+docs/API.md
+```
+
+Main API groups:
+
+```text
+/api/v1/auth
+/api/v1/records
+/api/v1/access-requests
+/api/v1/audit-logs
+/api/v1/ai
+/api/v1/health
+```
+
+---
+
+# 🧭 Development Roadmap
+
+## ✅ Completed Core
+
+* Authentication
+* JWT
+* RBAC
+* Medical records
+* File upload
+* Encryption
+* SHA-256
+* Sui integration
+* Blockchain verification
+* Patient consent
+* Access expiry/revocation
+* Audit logging
+* AI backend foundation
+* React frontend foundation
+* Docker configuration
+* Testing infrastructure
+
+## 🚧 Final Hardening
+
+* Complete security regression testing
+* Expired-access testing
+* Cross-patient authorization testing
+* Audit authorization hardening
+* Additional automated tests
+* Deployment verification
+
+## 🔮 Future Scope
+
+* Advanced AI report understanding
+* Healthcare-provider integrations
+* Notifications
+* Multi-factor authentication
+* More granular consent
+* Emergency access workflows
+* Advanced analytics
+* Production-grade cloud infrastructure
+* Additional blockchain networks
+
+---
+
+# 📈 Why MediChain-AI?
+
+MediChain-AI demonstrates practical engineering across multiple domains:
+
+```text
+Full Stack Development
+        +
+Cybersecurity
+        +
+Cryptography
+        +
+Blockchain
+        +
+AI
+        +
+Database Engineering
+        +
+DevOps
+```
+
+Instead of using blockchain as a database, the project uses it specifically for **tamper-evident integrity verification**, while sensitive medical data remains off-chain.
+
+The project also demonstrates an important security principle:
+
+> **Authentication does not equal authorization.**
+
+A doctor being logged in does not automatically grant access to patient records. The system additionally checks role, ownership/consent and access validity.
+
+---
+
+# ⚠️ Honest Limitations
+
+MediChain-AI is a production-style MVP and portfolio project.
+
+It is **not currently**:
+
+* A certified Electronic Health Record system
+* A hospital information system
+* A clinical decision-support system
+* A regulatory-compliance certification
+* A replacement for medical professionals
+
+Real-world deployment would require additional security reviews, compliance work, clinical validation, infrastructure hardening, legal/privacy review and organizational controls.
+
+---
+
+# 👨‍💻 Author
+
+**Sayantan Dutta**
+
+B.Tech — Computer Science & Engineering (AI/ML)
+
+MediChain-AI is developed as a portfolio/hackathon project exploring the intersection of:
+
+**Healthcare × Security × Blockchain × AI × Full-Stack Engineering**
+
+---
+
+## ⭐ Project Vision
+
+```text
+                    MEDICHAIN-AI
+
+        Your Medical Records.
+             Your Control.
+
+Patient
+   │
+   ▼
+Encrypted Medical Data
+   │
+   ├──────► SHA-256
+   │           │
+   │           ▼
+   │       Sui Blockchain
+   │
+   ▼
+Patient-Controlled Access
+   │
+   ▼
+Authorized Doctor
+   │
+   ▼
+AI-Assisted Understanding
+   │
+   ▼
+Auditable Healthcare Data
+```
+
+**Built with security, privacy, integrity and patient control in mind.**
+
+```
+
+This version is based on the **actual ZIP structure and API documentation you uploaded**, rather than inventing a different architecture.
+```
