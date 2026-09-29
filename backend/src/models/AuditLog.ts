@@ -1,112 +1,67 @@
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose, { Schema, type Model } from 'mongoose';
+import type { AuditResult, UserRole } from '../types/enums';
 
-export interface IAuditLog extends Document {
-  userId: mongoose.Types.ObjectId;
-  role: "PATIENT" | "DOCTOR" | "HOSPITAL" | "ADMIN";
+export type AuditAction =
+  | 'auth.register'
+  | 'auth.login'
+  | 'auth.login_failed'
+  | 'auth.logout'
+  | 'auth.token_refresh'
+  | 'record.upload'
+  | 'record.list'
+  | 'record.view'
+  | 'record.download'
+  | 'record.update'
+  | 'record.delete'
+  | 'record.verify'
+  | 'access.request'
+  | 'access.approve'
+  | 'access.reject'
+  | 'access.revoke'
+  | 'access.list'
+  | 'ai.analyze'
+  | 'audit.view';
 
-  action:
-    | "RECORD_CREATED"
-    | "RECORD_VIEWED"
-    | "RECORD_DOWNLOADED"
-    | "RECORD_UPDATED"
-    | "RECORD_DELETED"
-    | "ACCESS_REQUESTED"
-    | "ACCESS_APPROVED"
-    | "ACCESS_REJECTED"
-    | "ACCESS_REVOKED";
-
-  recordId?: mongoose.Types.ObjectId;
-  patientId?: mongoose.Types.ObjectId;
-  doctorId?: mongoose.Types.ObjectId;
-
-  status: "SUCCESS" | "FAILED";
-
-  ipAddress?: string;
+export interface IAuditLog {
+  actor?: mongoose.Types.ObjectId;
+  actorRole?: UserRole;
+  actorEmail?: string;
+  action: AuditAction;
+  resourceType?: string;
+  resourceId?: string;
+  result: AuditResult;
+  statusCode?: number;
+  reason?: string;
+  ip?: string;
   userAgent?: string;
-
-  metadata?: Record<string, any>;
-
+  requestId?: string;
+  metadata?: Record<string, unknown>;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 const auditLogSchema = new Schema<IAuditLog>(
   {
-    userId: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-
-    role: {
-      type: String,
-      enum: ["PATIENT", "DOCTOR", "HOSPITAL", "ADMIN"],
-      required: true,
-    },
-
-    action: {
-      type: String,
-      enum: [
-        "RECORD_CREATED",
-        "RECORD_VIEWED",
-        "RECORD_DOWNLOADED",
-        "RECORD_UPDATED",
-        "RECORD_DELETED",
-        "ACCESS_REQUESTED",
-        "ACCESS_APPROVED",
-        "ACCESS_REJECTED",
-        "ACCESS_REVOKED",
-      ],
-      required: true,
-    },
-
-    recordId: {
-      type: Schema.Types.ObjectId,
-      ref: "MedicalRecord",
-    },
-
-    patientId: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-    },
-
-    doctorId: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-    },
-
-    status: {
-      type: String,
-      enum: ["SUCCESS", "FAILED"],
-      required: true,
-    },
-
-    ipAddress: {
-      type: String,
-    },
-
-    userAgent: {
-      type: String,
-    },
-
-    metadata: {
-      type: Schema.Types.Mixed,
-    },
+    actor: { type: Schema.Types.ObjectId, ref: 'User', index: true },
+    actorRole: { type: String, enum: ['patient', 'doctor'] },
+    actorEmail: { type: String },
+    action: { type: String, required: true, index: true },
+    resourceType: { type: String },
+    resourceId: { type: String },
+    result: { type: String, required: true, enum: ['SUCCESS', 'FAILURE'], index: true },
+    statusCode: { type: Number },
+    reason: { type: String, maxlength: 500 },
+    ip: { type: String },
+    userAgent: { type: String },
+    requestId: { type: String },
+    metadata: { type: Schema.Types.Mixed },
   },
-  {
-    timestamps: {
-      createdAt: true,
-      updatedAt: false,
-    },
-  }
+  { timestamps: true, versionKey: false },
 );
 
-// Useful indexes for audit-log queries
-auditLogSchema.index({ userId: 1, createdAt: -1 });
-auditLogSchema.index({ patientId: 1, createdAt: -1 });
-auditLogSchema.index({ doctorId: 1, createdAt: -1 });
-auditLogSchema.index({ recordId: 1, createdAt: -1 });
-auditLogSchema.index({ action: 1, createdAt: -1 });
+auditLogSchema.index({ createdAt: -1 });
+auditLogSchema.index({ actor: 1, createdAt: -1 });
 
-const AuditLog = mongoose.model<IAuditLog>("AuditLog", auditLogSchema);
-
-export default AuditLog;
+export const AuditLog: Model<IAuditLog> =
+  (mongoose.models.AuditLog as Model<IAuditLog>) ??
+  mongoose.model<IAuditLog>('AuditLog', auditLogSchema);

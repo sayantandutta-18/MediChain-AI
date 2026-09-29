@@ -1,0 +1,60 @@
+services:
+  mongodb:
+    image: mongo:7
+    container_name: medichain-mongo
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - medichain-mongo-data:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: medichain-api
+    restart: unless-stopped
+    ports:
+      - '4000:4000'
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      API_PREFIX: /api/v1
+      MONGODB_URI: mongodb://mongodb:27017/medichain
+      # Secrets are supplied at runtime only - never bake them into the image.
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in your shell or .env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-2h}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?set ENCRYPTION_KEY (64 hex chars)}
+      ENCRYPTION_KEY_VERSION: ${ENCRYPTION_KEY_VERSION:-v1}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      SUI_NETWORK: ${SUI_NETWORK:-testnet}
+      SUI_PACKAGE_ID: ${SUI_PACKAGE_ID:-}
+      SUI_REGISTRY_ID: ${SUI_REGISTRY_ID:-}
+      SUI_ENV_MNEMONIC: ${SUI_ENV_MNEMONIC:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-10}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api/v1}
+    container_name: medichain-web
+    restart: unless-stopped
+    ports:
+      - '8080:80'
+    depends_on:
+      - api
+
+volumes:
+  medichain-mongo-data:

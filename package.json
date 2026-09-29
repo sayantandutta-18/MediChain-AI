@@ -1,0 +1,25 @@
+{
+  "name": "medichain-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MediChain-AI - secure, patient-controlled medical record platform with encryption, SHA-256 integrity, Sui blockchain anchoring and AI assistance",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "setup": "node backend/scripts/setup.js",
+    "dev": "node scripts/dev.js",
+    "dev:backend": "node scripts/dev-one.js api",
+    "dev:frontend": "node scripts/dev-one.js web",
+    "build": "node scripts/build.js",
+    "test": "node scripts/run.js backend test",
+    "test:coverage": "node scripts/run.js backend test:coverage",
+    "smoke": "node scripts/run.js backend smoke",
+    "typecheck": "node scripts/typecheck.js",
+    "lint": "node scripts/typecheck.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

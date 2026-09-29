@@ -1,136 +1,106 @@
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose, { Schema, type Model } from 'mongoose';
+import type { AnchorStatus } from '../types/enums';
+import { ENCRYPTION_ALGORITHM, type EncryptedPayload } from '../utils/encryption';
 
-export interface IMedicalRecord extends Document {
-  patientId: mongoose.Types.ObjectId;
+export interface IBlockchainAnchor {
+  status: AnchorStatus;
+  network: string;
+  /** SHA-256 digest anchored on chain (hex) - never the document itself. */
+  onChainHash?: string;
+  transactionDigest?: string;
+  objectId?: string;
+  packageId?: string;
+  registryId?: string;
+  anchoredAt?: Date;
+  error?: string;
+}
 
+export interface IEncryptedFile extends EncryptedPayload {}
+
+export interface IMedicalRecord {
+  _id: mongoose.Types.ObjectId;
+  /** Human friendly, globally unique record id also used on chain. */
+  recordId: string;
+  patient: mongoose.Types.ObjectId;
   title: string;
-  type: string;
-  date: Date;
-
-  provider?: string;
-  hospital?: string;
-  summary?: string;
-
-  // Original file metadata
-  fileUrl?: string;
-  fileHash?: string;
-
-  // Encrypted file data
-  encryptedData?: Buffer;
-  iv?: string;
-  authTag?: string;
-
-  encrypted: boolean;
-
-  // Blockchain verification metadata
-  blockchainTxDigest?: string;
-  blockchainObjectId?: string;
-  blockchainPackageId?: string;
-  blockchainNetwork?: string;
-
+  description?: string;
+  category: string;
+  fileName: string;
+  mimeType: string;
+  /** Original (plaintext) size in bytes. */
+  size: number;
+  /** SHA-256 of the original plaintext file (hex) - TRD-7. */
+  fileHash: string;
+  encryptedFile: IEncryptedFile;
+  /** Plaintext only, for text-like documents, used to build the AI context. */
+  extractedText?: string;
+  blockchain: IBlockchainAnchor;
   createdAt: Date;
   updatedAt: Date;
+  save(): Promise<this>;
 }
+
+/**
+ * The whole `encryptedFile` sub-document is excluded from normal queries and is
+ * only pulled in with `.select('+encryptedFile')` on the authorised download path.
+ */
+const encryptedFileSchema = new Schema<IEncryptedFile>(
+  {
+    data: { type: String, required: true },
+    iv: { type: String, required: true },
+    authTag: { type: String, required: true },
+    algorithm: { type: String, required: true, enum: [ENCRYPTION_ALGORITHM], default: ENCRYPTION_ALGORITHM },
+    keyVersion: { type: String, required: true },
+  },
+  { _id: false },
+);
+
+const blockchainSchema = new Schema<IBlockchainAnchor>(
+  {
+    status: {
+      type: String,
+      enum: ['PENDING', 'ANCHORED', 'SIMULATED', 'FAILED'],
+      default: 'PENDING',
+      index: true,
+    },
+    network: { type: String, required: true },
+    onChainHash: { type: String },
+    transactionDigest: { type: String },
+    objectId: { type: String },
+    packageId: { type: String },
+    registryId: { type: String },
+    anchoredAt: { type: Date },
+    error: { type: String },
+  },
+  { _id: false },
+);
 
 const medicalRecordSchema = new Schema<IMedicalRecord>(
   {
-    patientId: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-
-    title: {
+    recordId: { type: String, required: true, unique: true, index: true },
+    patient: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    title: { type: String, required: true, trim: true, maxlength: 160 },
+    description: { type: String, trim: true, maxlength: 2000 },
+    category: {
       type: String,
       required: true,
-      trim: true,
+      enum: ['lab-report', 'prescription', 'imaging', 'discharge-summary', 'vaccination', 'other'],
+      default: 'other',
     },
-
-    type: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
-    date: {
-      type: Date,
-      required: true,
-    },
-
-    provider: {
-      type: String,
-      trim: true,
-    },
-
-    hospital: {
-      type: String,
-      trim: true,
-    },
-
-    summary: {
-      type: String,
-      trim: true,
-    },
-
-    // Original file URL / metadata
-    fileUrl: {
-      type: String,
-    },
-
-    // SHA-256 hash of original file
-    fileHash: {
-      type: String,
-    },
-
-    // AES-256-GCM encrypted file
-    encryptedData: {
-      type: Buffer,
-    },
-
-    // Initialization Vector
-    iv: {
-      type: String,
-    },
-
-    // Authentication Tag
-    authTag: {
-      type: String,
-    },
-
-    encrypted: {
-      type: Boolean,
-      default: false,
-    },
-
-    // Blockchain transaction digest
-    blockchainTxDigest: {
-      type: String,
-    },
-
-    // Sui MedicalRecordAnchor object ID
-    blockchainObjectId: {
-      type: String,
-    },
-
-    // Published MediChain Move package ID
-    blockchainPackageId: {
-      type: String,
-    },
-
-    // Blockchain network
-    blockchainNetwork: {
-      type: String,
-      default: "testnet",
-    },
+    fileName: { type: String, required: true, maxlength: 255 },
+    mimeType: { type: String, required: true },
+    size: { type: Number, required: true, min: 1 },
+    fileHash: { type: String, required: true, index: true },
+    encryptedFile: { type: encryptedFileSchema, required: true, select: false },
+    extractedText: { type: String, select: false, maxlength: 60_000 },
+    blockchain: { type: blockchainSchema, required: true, default: () => ({ network: 'testnet', status: 'PENDING' }) },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true, versionKey: false },
 );
 
-const MedicalRecord = mongoose.model<IMedicalRecord>(
-  "MedicalRecord",
-  medicalRecordSchema
-);
+// Only the owning patient can read the encrypted blob.
+medicalRecordSchema.index({ patient: 1, createdAt: -1 });
 
-export default MedicalRecord;
+export const MedicalRecord: Model<IMedicalRecord> =
+  (mongoose.models.MedicalRecord as Model<IMedicalRecord>) ??
+  mongoose.model<IMedicalRecord>('MedicalRecord', medicalRecordSchema);

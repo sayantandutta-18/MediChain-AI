@@ -1,21 +1,18 @@
-import dns from "node:dns";
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
+import { env } from './env';
+import { logger } from '../utils/logger';
 
-dns.setServers(["1.1.1.1"]);
+export const connectDatabase = async (uri: string = env.mongodbUri): Promise<typeof mongoose> => {
+  mongoose.set('strictQuery', true);
+  await mongoose.connect(uri, {
+    serverSelectionTimeoutMS: 10_000,
+    maxPoolSize: 20,
+    autoIndex: env.isProduction ? false : true,
+  });
+  logger.info(`MongoDB connected (${mongoose.connection.name || 'medichain'})`);
+  return mongoose;
+};
 
-export const connectDB = async () => {
-  try {
-    const mongoURI = process.env.MONGODB_URI;
-
-    if (!mongoURI) {
-      throw new Error("MONGODB_URI is not defined");
-    }
-
-    await mongoose.connect(mongoURI);
-
-    console.log("✅ MongoDB connected");
-  } catch (error) {
-    console.error("❌ MongoDB connection failed:", error);
-    process.exit(1);
-  }
+export const disconnectDatabase = async (): Promise<void> => {
+  await mongoose.disconnect();
 };
