@@ -17,3 +17,5 @@ tmp/
 *.tsbuildinfo
 .sui/
 sui-config/client.yaml
+
+backend/.env
