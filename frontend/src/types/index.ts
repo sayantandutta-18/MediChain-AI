@@ -18,6 +18,8 @@ export interface User {
   specialty: string | null;
   registrationNumber: string | null;
   hospital: string | null;
+  experience: string | null;
+  verificationStatus: 'PENDING' | 'VERIFIED' | 'REJECTED' | null;
   isActive: boolean;
   createdAt: string;
   lastLoginAt: string | null;
@@ -60,6 +62,7 @@ export interface MedicalRecord {
   fileHash: string;
   hasPlainText: boolean;
   blockchain: BlockchainMeta;
+  currentVersion: number;
   createdAt: string;
   updatedAt: string;
   patient?: { id: string; name: string } | null;
@@ -130,6 +133,25 @@ export interface AuditEntry {
   createdAt: string;
 }
 
+export interface EmergencyProfile {
+  id: string;
+  patientId: string;
+  bloodGroup: string | null;
+  allergies: string[];
+  medications: string[];
+  conditions: string[];
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  organDonor: boolean;
+  primaryDoctor: string | null;
+  updatedAt: string;
+}
+
+export interface EmergencyToken {
+  token: string;
+  expiresAt: string;
+}
+
 export interface RecordStats {
   total: number;
   anchored: number;
@@ -166,7 +188,12 @@ export interface HealthStatus {
   timestamp: string;
   dependencies: {
     database: { connected: boolean; name: string };
-    blockchain: { network: string; configured: boolean; reachable: boolean };
+    blockchain: {
+      network: string;
+      configured: boolean;
+      reachable: boolean;
+      rpcMode?: string;
+    };
     ai: { configured: boolean; model: string };
   };
 }

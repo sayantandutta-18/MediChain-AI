@@ -15,6 +15,7 @@ export const ProfilePage = () => {
     specialty: user?.specialty ?? '',
     hospital: user?.hospital ?? '',
     registrationNumber: user?.registrationNumber ?? '',
+    experience: user?.experience ?? '',
   });
   const [profileStatus, setProfileStatus] = useState<{ tone: 'success' | 'danger'; message: string } | null>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -32,6 +33,7 @@ export const ProfilePage = () => {
       specialty: user.specialty ?? '',
       hospital: user.hospital ?? '',
       registrationNumber: user.registrationNumber ?? '',
+      experience: user.experience ?? '',
     });
   }, [user]);
 
@@ -50,6 +52,7 @@ export const ProfilePage = () => {
               specialty: profile.specialty.trim() || undefined,
               hospital: profile.hospital.trim() || undefined,
               registrationNumber: profile.registrationNumber.trim() || undefined,
+              experience: profile.experience.trim() || undefined,
             }
           : {}),
       });
@@ -126,6 +129,14 @@ export const ProfilePage = () => {
                 {user.isActive ? 'Active' : 'Deactivated'}
               </dd>
             </div>
+            {isDoctor && user.verificationStatus && (
+              <div className="flex justify-between gap-3">
+                <dt className="text-slate-500">Verification status</dt>
+                <dd className={user.verificationStatus === 'VERIFIED' ? 'text-mint' : user.verificationStatus === 'REJECTED' ? 'text-rose-300' : 'text-amber-300'}>
+                  {user.verificationStatus}
+                </dd>
+              </div>
+            )}
           </dl>
         </Card>
 
@@ -188,6 +199,21 @@ export const ProfilePage = () => {
                       value={profile.registrationNumber}
                       onChange={(event) =>
                         setProfile((prev) => ({ ...prev, registrationNumber: event.target.value }))
+                      }
+                      className="field"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="profile-experience" className="field-label">
+                      Experience
+                    </label>
+                    <input
+                      id="profile-experience"
+                      type="text"
+                      placeholder="e.g. 10 years"
+                      value={profile.experience}
+                      onChange={(event) =>
+                        setProfile((prev) => ({ ...prev, experience: event.target.value }))
                       }
                       className="field"
                     />

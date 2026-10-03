@@ -35,6 +35,7 @@ export interface IMedicalRecord {
   /** Plaintext only, for text-like documents, used to build the AI context. */
   extractedText?: string;
   blockchain: IBlockchainAnchor;
+  currentVersion: number;
   createdAt: Date;
   updatedAt: Date;
   save(): Promise<this>;
@@ -94,6 +95,7 @@ const medicalRecordSchema = new Schema<IMedicalRecord>(
     encryptedFile: { type: encryptedFileSchema, required: true, select: false },
     extractedText: { type: String, select: false, maxlength: 60_000 },
     blockchain: { type: blockchainSchema, required: true, default: () => ({ network: 'testnet', status: 'PENDING' }) },
+    currentVersion: { type: Number, default: 1, required: true },
   },
   { timestamps: true, versionKey: false },
 );

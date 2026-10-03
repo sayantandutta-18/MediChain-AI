@@ -20,6 +20,8 @@ import { Badge, HashChip } from '@/components/ui/Badge';
 import { Alert, ErrorState, LoadingState } from '@/components/ui/Feedback';
 import { ConfirmDialog } from '@/components/ui/Modal';
 import { anchorStyles, categoryStyles, urgencyStyles, verificationStyles } from '@/utils/styles';
+import { ShareLinkModal } from '@/components/records/ShareLinkModal';
+import { RecordVersions } from '@/components/records/RecordVersions';
 import { formatBytes, formatDateTime, titleCase } from '@/utils/format';
 import type { AiReport, MedicalRecord, RecordCategory, VerificationReport } from '@/types';
 import { RECORD_CATEGORIES, RECORD_CATEGORY_LABELS } from '@/types';
@@ -38,6 +40,7 @@ export const RecordDetailPage = () => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isConfirmDelete, setIsConfirmDelete] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -174,6 +177,12 @@ export const RecordDetailPage = () => {
               <Download className="h-4 w-4" aria-hidden="true" />
               {isDownloading ? 'Decrypting…' : 'Download'}
             </button>
+            {isOwner && (
+              <button type="button" onClick={() => setIsShareModalOpen(true)} className="btn-ghost">
+                <Link2 className="h-4 w-4" aria-hidden="true" />
+                Share
+              </button>
+            )}
             <Link to={`/verification?record=${record.recordId}`} className="btn-primary">
               <Fingerprint className="h-4 w-4" aria-hidden="true" />
               Verify integrity
@@ -465,6 +474,8 @@ export const RecordDetailPage = () => {
             ) : null}
           </Card>
 
+          <RecordVersions recordId={record.recordId} onVersionUploaded={() => void load()} />
+
           {isOwner ? (
             <Card className="p-6" delay={0.1}>
               <h2 className="section-title">Danger zone</h2>
@@ -499,6 +510,12 @@ export const RecordDetailPage = () => {
         confirmLabel="Delete permanently"
         onConfirm={() => void handleDelete()}
         onCancel={() => setIsConfirmDelete(false)}
+      />
+
+      <ShareLinkModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        recordId={record.recordId}
       />
     </div>
   );

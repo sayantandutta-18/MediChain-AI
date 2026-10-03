@@ -3,13 +3,28 @@ import { pathParam } from '../utils/request';
 import { currentUser } from '../middleware/auth';
 import * as recordService from '../services/recordService';
 import { recordAuditEvent } from '../services/auditLogService';
+import { createNotification } from '../services/notificationService';
 import { listRecordsSchema, updateRecordSchema } from '../validators/recordValidators';
+import { ApiError } from '../utils/ApiError';
 
 export const uploadRecord = asyncHandler(async (req, res) => {
   const user = currentUser(req);
   const file = req.file!;
 
   const record = await recordService.createRecord(user.id, req.body, file);
+
+  await createNotification({
+    recipientId: user.id,
+    type: 'record.uploaded',
+    severity: 'success',
+    title: 'Record secured',
+    body: `"${record.title}" was encrypted and its digest ${
+      record.blockchain.status === 'SIMULATED' ? 'recorded (simulated anchor)' : 'anchored on Sui'
+    }.`,
+    resourceType: 'MedicalRecord',
+    resourceId: record.recordId,
+    link: `/records/${record.recordId}`,
+  });
 
   await recordAuditEvent({
     actorId: user.id,
@@ -95,6 +110,42 @@ export const downloadRecord = asyncHandler(async (req, res) => {
   res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(file.fileName)}"`);
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.send(file.buffer);
+});
+
+export const uploadRecordVersion = asyncHandler(async (req, res) => {
+  const user = currentUser(req);
+  const recordId = pathParam(req, 'recordId');
+  if (!req.file) throw ApiError.badRequest('No file uploaded');
+
+  const record = await recordService.uploadRecordVersion(user, recordId, req.file);
+  res.status(201).json({ success: true, message: 'New version uploaded successfully', data: { record } });
+});
+
+export const listRecordVersions = asyncHandler(async (req, res) => {
+  const user = currentUser(req);
+  const recordId = pathParam(req, 'recordId');
+  const versions = await recordService.listRecordVersions(user, recordId);
+  res.json({ success: true, message: 'Record versions retrieved successfully', data: { versions } });
+});
+
+export const getTimeline = asyncHandler(async (req, res) => {
+  const user = currentUser(req);
+  const timeline = await recordService.getTimeline(user);
+  res.json({ success: true, data: { timeline } });
+});
+
+export const downloadRecordVersion = asyncHandler(async (req, res) => {
+  const user = currentUser(req);
+  const recordId = pathParam(req, 'recordId');
+  const versionNumber = parseInt(pathParam(req, 'versionNumber'), 10);
+  
+  if (isNaN(versionNumber)) throw ApiError.badRequest('Invalid version number');
+
+  const { buffer, mimeType, fileName } = await recordService.downloadRecordVersion(user, recordId, versionNumber);
+
+  res.setHeader('Content-Type', mimeType);
+  res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+  res.send(buffer);
 });
 
 export const updateRecord = asyncHandler(async (req, res) => {

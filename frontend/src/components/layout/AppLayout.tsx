@@ -7,6 +7,7 @@ import {
   LogOut,
   Menu,
   ScrollText,
+  Shield,
   Sparkles,
   Stethoscope,
   UserCog,
@@ -40,6 +41,12 @@ const NAV_ITEMS: NavItem[] = [
     roles: ['patient', 'doctor'],
   },
   {
+    to: '/timeline',
+    label: 'Medical timeline',
+    icon: <Activity className="h-[18px] w-[18px]" aria-hidden="true" />,
+    roles: ['patient', 'doctor'],
+  },
+  {
     to: '/access-requests',
     label: 'Access requests',
     icon: <Users className="h-[18px] w-[18px]" aria-hidden="true" />,
@@ -55,6 +62,12 @@ const NAV_ITEMS: NavItem[] = [
     to: '/audit',
     label: 'Audit trail',
     icon: <ScrollText className="h-[18px] w-[18px]" aria-hidden="true" />,
+    roles: ['patient', 'doctor'],
+  },
+  {
+    to: '/security',
+    label: 'Security center',
+    icon: <Shield className="h-[18px] w-[18px]" aria-hidden="true" />,
     roles: ['patient', 'doctor'],
   },
   {

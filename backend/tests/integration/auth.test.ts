@@ -68,7 +68,7 @@ describe('POST /api/v1/auth/register', () => {
   it('rejects unknown roles', async () => {
     await api()
       .post('/api/v1/auth/register')
-      .send({ name: 'Admin', email: uniqueEmail('admin'), password: PATIENT_PASSWORD, role: 'admin' })
+      .send({ name: 'Admin', email: uniqueEmail('admin'), password: PATIENT_PASSWORD, role: 'invalid_role' })
       .expect(400);
   });
 });

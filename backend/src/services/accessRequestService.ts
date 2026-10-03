@@ -87,7 +87,7 @@ export const createAccessRequest = async (
 export const listAccessRequests = async (
   user: AuthenticatedUser,
   input: ListAccessRequestsInput,
-  scope: 'patient' | 'doctor' = user.role,
+  scope: 'patient' | 'doctor' = user.role as 'patient' | 'doctor',
 ) => {
   const filter: Record<string, unknown> = { [scope]: user.id };
   if (input.status) filter.status = input.status;
@@ -194,6 +194,7 @@ export const listPatientRelationships = async (patient: AuthenticatedUser) => {
 };
 
 export const accessRequestStats = async (user: AuthenticatedUser) => {
+  if (user.role === 'admin') return { pending: 0, approved: 0, rejected: 0, revoked: 0, accessiblePatients: 0 };
   const filter: Record<string, unknown> = { [user.role]: user.id };
   const [pending, approved, rejected, revoked, accessiblePatients] = await Promise.all([
     AccessRequest.countDocuments({ ...filter, status: 'PENDING' }),

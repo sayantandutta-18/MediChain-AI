@@ -29,6 +29,7 @@ export const RegisterPage = () => {
     confirmPassword: '',
     specialty: '',
     hospital: '',
+    experience: '',
   });
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -55,7 +56,7 @@ export const RegisterPage = () => {
         password: form.password,
         role,
         ...(role === 'doctor' && form.specialty.trim()
-          ? { specialty: form.specialty.trim(), hospital: form.hospital.trim() || undefined }
+          ? { specialty: form.specialty.trim(), hospital: form.hospital.trim() || undefined, experience: form.experience.trim() || undefined }
           : {}),
       });
       navigate('/dashboard', { replace: true });
@@ -186,6 +187,19 @@ export const RegisterPage = () => {
                 ) : null}
               </div>
               <div>
+                <label htmlFor="experience" className="field-label">
+                  Experience
+                </label>
+                <input
+                  id="experience"
+                  type="text"
+                  value={form.experience}
+                  onChange={update('experience')}
+                  className="field"
+                  placeholder="e.g. 10 years"
+                />
+              </div>
+              <div className="sm:col-span-2">
                 <label htmlFor="hospital" className="field-label">
                   Hospital
                 </label>

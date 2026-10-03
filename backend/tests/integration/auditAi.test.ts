@@ -1,4 +1,5 @@
 import { api, authHeader, createDoctor, createPatient, uploadRecord } from '../helpers';
+import { translateProviderError } from '../../src/services/aiService';
 
 describe('Audit trail (TRD-10)', () => {
   it('records authentication events', async () => {
@@ -133,6 +134,48 @@ describe('AI module (TRD-15)', () => {
       .set(authHeader(doctor))
       .send({ recordId: record.recordId })
       .expect(403);
+  });
+
+  it('maps provider failures onto controlled errors, never a generic 500', () => {
+
+    // Out of credits / throttled -> controlled 503 with actionable wording.
+    const quota = translateProviderError(
+      Object.assign(new Error('You have no credits remaining.'), {
+        status: 429,
+        code: 'insufficient_quota',
+      }),
+    );
+    expect(quota.statusCode).toBe(503);
+    expect(quota.code).toBe('AI_QUOTA_EXCEEDED');
+    expect(quota.message).toMatch(/credits/i);
+
+    // Rejected credential -> reported as not configured.
+    const rejected = translateProviderError(
+      Object.assign(new Error('sk-proj-SECRETVALUE rejected'), { status: 401, code: 'invalid_api_key' }),
+    );
+    expect(rejected.statusCode).toBe(503);
+    expect(rejected.code).toBe('AI_NOT_CONFIGURED');
+
+    // Provider outage -> controlled, no internals leaked.
+    const outage = translateProviderError(Object.assign(new Error('upstream exploded'), { status: 503 }));
+    expect(outage.statusCode).toBe(503);
+    expect(outage.code).toBe('AI_PROVIDER_ERROR');
+
+    // Unknown failure -> still a controlled 503, never a 500.
+    const unknown = translateProviderError(new Error('who knows'));
+    expect(unknown.statusCode).toBe(503);
+    expect(unknown.code).toBe('AI_REQUEST_FAILED');
+  });
+
+  it('never leaks provider internals or key material in AI error messages', () => {
+
+    const messages = [
+      translateProviderError(Object.assign(new Error('sk-proj-SECRETVALUE rejected'), { status: 401 })).message,
+      translateProviderError(Object.assign(new Error('key sk-abc leaked'), { status: 429 })).message,
+      translateProviderError(new Error('stack trace with /srv/app/secrets')).message,
+    ].join(' | ');
+
+    expect(messages).not.toMatch(/sk-proj|SECRETVALUE|sk-abc|\/srv\/app/);
   });
 });
 

@@ -18,7 +18,12 @@ export const health = asyncHandler(async (_req: Request, res: Response) => {
     timestamp: new Date().toISOString(),
     dependencies: {
       database: { connected: databaseConnected, name: 'mongodb' },
-      blockchain: { network: blockchain.network, configured: blockchain.configured, reachable: blockchain.reachable },
+      blockchain: {
+        network: blockchain.network,
+        configured: blockchain.configured,
+        reachable: blockchain.reachable,
+        rpcMode: blockchain.rpcMode,
+      },
       ai: aiHealth(),
     },
   };

@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import mongoose from 'mongoose';
 import { MedicalRecord, type IMedicalRecord } from '../models/MedicalRecord';
+import { RecordVersion } from '../models/RecordVersion';
 import { User } from '../models/User';
 import { env } from '../config/env';
 import { ApiError } from '../utils/ApiError';
@@ -47,6 +48,7 @@ export const toRecordSummary = (record: IMedicalRecord) => ({
     anchoredAt: record.blockchain?.anchoredAt ? new Date(record.blockchain.anchoredAt).toISOString() : null,
     onChainHash: record.blockchain?.onChainHash ?? null,
   },
+  currentVersion: record.currentVersion,
   createdAt: record.createdAt,
   updatedAt: record.updatedAt,
 });
@@ -66,8 +68,9 @@ export const createRecord = async (patientId: string, input: UploadRecordInput, 
   const extractedText = extractText(file);
 
   // 3. Persist.
+  const recordIdStr = `med_${randomUUID().replace(/-/g, '').slice(0, 24)}`;
   const record = await MedicalRecord.create({
-    recordId: `med_${randomUUID().replace(/-/g, '').slice(0, 24)}`,
+    recordId: recordIdStr,
     patient: patient._id,
     title: input.title,
     description: input.description,
@@ -79,11 +82,26 @@ export const createRecord = async (patientId: string, input: UploadRecordInput, 
     encryptedFile,
     extractedText,
     blockchain: { network: env.sui.network, status: 'PENDING' },
+    currentVersion: 1,
   } as Partial<IMedicalRecord>);
+
+  await RecordVersion.create({
+    recordId: record._id,
+    versionNumber: 1,
+    fileName: file.originalname,
+    mimeType: file.mimetype,
+    size: file.size,
+    fileHash,
+    encryptedFile,
+    extractedText,
+    blockchain: record.blockchain,
+  });
 
   // 4. Anchor the hash, then persist the blockchain metadata.
   try {
     await anchorRecordHash(record);
+    // Sync the version blockchain anchor
+    await RecordVersion.updateOne({ recordId: record._id, versionNumber: 1 }, { blockchain: record.blockchain });
   } catch (error) {
     logger.error(`Anchoring failed for record ${record.recordId}`, error);
   }
@@ -152,6 +170,57 @@ export const downloadRecord = async (user: AuthenticatedUser, recordId: string) 
   };
 };
 
+export const uploadRecordVersion = async (
+  user: AuthenticatedUser,
+  recordId: string,
+  file: Express.Multer.File,
+) => {
+  const { record } = await loadAuthorizedRecord(user, recordId);
+  
+  if (user.role !== 'patient' || record.patient.toString() !== user.id) {
+    throw ApiError.forbidden('Only the owning patient can upload a new version.', { code: 'NOT_RECORD_OWNER' });
+  }
+
+  const fileHash = sha256(file.buffer);
+  const encryptedFile = encryptBuffer(file.buffer);
+  const extractedText = extractText(file);
+
+  const nextVersion = record.currentVersion + 1;
+
+  await RecordVersion.create({
+    recordId: record._id,
+    versionNumber: nextVersion,
+    fileName: file.originalname,
+    mimeType: file.mimetype,
+    size: file.size,
+    fileHash,
+    encryptedFile,
+    extractedText,
+    blockchain: { network: env.sui.network, status: 'PENDING' },
+  });
+
+  // Update MedicalRecord to the latest
+  record.currentVersion = nextVersion;
+  record.fileName = file.originalname;
+  record.mimeType = file.mimetype;
+  record.size = file.size;
+  record.fileHash = fileHash;
+  record.encryptedFile = encryptedFile;
+  record.extractedText = extractedText;
+  record.blockchain = { network: env.sui.network, status: 'PENDING' };
+  
+  await record.save();
+
+  try {
+    await anchorRecordHash(record);
+    await RecordVersion.updateOne({ recordId: record._id, versionNumber: nextVersion }, { blockchain: record.blockchain });
+  } catch (error) {
+    logger.error(`Anchoring failed for record ${record.recordId} version ${nextVersion}`, error);
+  }
+
+  return toRecordSummary(record);
+};
+
 /** PRD-4: doctor update/delete of patient records is denied; only the owner can edit. */
 export const updateRecord = async (
   user: AuthenticatedUser,
@@ -173,6 +242,73 @@ export const updateRecord = async (
   return toRecordSummary(record);
 };
 
+export const listRecordVersions = async (user: AuthenticatedUser, recordId: string) => {
+  const { record } = await loadAuthorizedRecord(user, recordId);
+  
+  const versions = await RecordVersion.find({ recordId: record._id }).sort({ versionNumber: -1 });
+  
+  return versions.map((v) => ({
+    versionNumber: v.versionNumber,
+    fileName: v.fileName,
+    mimeType: v.mimeType,
+    size: v.size,
+    fileHash: v.fileHash,
+    blockchain: v.blockchain,
+    createdAt: v.createdAt.toISOString(),
+  }));
+};
+
+export const getTimeline = async (user: AuthenticatedUser) => {
+  const accessiblePatientIds = user.role === 'patient' 
+    ? [user.id] 
+    : await listAccessiblePatientIds(user.id);
+
+  if (accessiblePatientIds.length === 0) return [];
+
+  // Get all records the user can access
+  const records = await MedicalRecord.find({ patient: { $in: accessiblePatientIds } }).lean();
+  const recordMap = new Map(records.map((r) => [r._id.toString(), r]));
+
+  // Get all versions for these records
+  const versions = await RecordVersion.find({ recordId: { $in: records.map(r => r._id) } }).lean();
+
+  const timelineEvents = versions.map((v) => {
+    const parent = recordMap.get(v.recordId.toString())!;
+    return {
+      eventId: v._id.toString(),
+      recordId: parent.recordId,
+      title: parent.title,
+      category: parent.category,
+      versionNumber: v.versionNumber,
+      fileName: v.fileName,
+      size: v.size,
+      blockchain: v.blockchain,
+      createdAt: v.createdAt,
+      type: v.versionNumber === 1 ? 'CREATED' : 'UPDATED',
+    };
+  });
+
+  // Sort descending by date
+  timelineEvents.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+  return timelineEvents;
+};
+
+export const downloadRecordVersion = async (user: AuthenticatedUser, recordId: string, versionNumber: number) => {
+  const { record } = await loadAuthorizedRecord(user, recordId);
+  
+  const version = await RecordVersion.findOne({ recordId: record._id, versionNumber }).select('+encryptedFile');
+  if (!version) throw ApiError.notFound('Version not found.', 'VERSION_NOT_FOUND');
+  
+  const decryptedContent = decryptPayload(version.encryptedFile);
+
+  return {
+    buffer: decryptedContent,
+    mimeType: version.mimeType,
+    fileName: version.fileName,
+  };
+};
+
 export const deleteRecord = async (user: AuthenticatedUser, recordId: string) => {
   const record = await MedicalRecord.findOne({ recordId });
   if (!record) throw ApiError.notFound('Medical record not found.', 'RECORD_NOT_FOUND');
@@ -181,6 +317,7 @@ export const deleteRecord = async (user: AuthenticatedUser, recordId: string) =>
     throw ApiError.forbidden('Only the owning patient can delete this record.', { code: 'NOT_RECORD_OWNER' });
   }
 
+  await RecordVersion.deleteMany({ recordId: record._id });
   await record.deleteOne();
   return { recordId, deleted: true };
 };

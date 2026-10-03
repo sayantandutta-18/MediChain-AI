@@ -22,6 +22,10 @@ const VerificationPage = lazy(() =>
   import('@/pages/VerificationPage').then((m) => ({ default: m.VerificationPage })),
 );
 const AuditPage = lazy(() => import('@/pages/AuditPage').then((m) => ({ default: m.AuditPage })));
+const SecurityCenterPage = lazy(() => import('@/pages/SecurityCenterPage').then((m) => ({ default: m.SecurityCenterPage })));
+const TimelinePage = lazy(() => import('@/pages/TimelinePage').then((m) => ({ default: m.TimelinePage })));
+const EmergencyCardPage = lazy(() => import('@/pages/EmergencyCardPage').then((m) => ({ default: m.EmergencyCardPage })));
+const EmergencyAccessPage = lazy(() => import('@/pages/EmergencyAccessPage').then((m) => ({ default: m.EmergencyAccessPage })));
 const AiAssistantPage = lazy(() =>
   import('@/pages/AiAssistantPage').then((m) => ({ default: m.AiAssistantPage })),
 );
@@ -31,6 +35,7 @@ const NotFoundPage = lazy(() => import('@/pages/NotFoundPage').then((m) => ({ de
 export const AppRoutes = () => (
   <Suspense fallback={<LoadingState label="Loading view…" className="min-h-[60vh]" />}>
     <Routes>
+      <Route path="/emergency/:token" element={<EmergencyAccessPage />} />
       <Route element={<PublicOnlyRoute />}>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
@@ -40,12 +45,15 @@ export const AppRoutes = () => (
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/records" element={<RecordsPage />} />
+        <Route path="/timeline" element={<TimelinePage />} />
         <Route path="/records/:recordId" element={<RecordDetailPage />} />
         <Route path="/access-requests" element={<AccessRequestsPage />} />
         <Route path="/verification" element={<VerificationPage />} />
         <Route path="/audit" element={<AuditPage />} />
+        <Route path="/security" element={<SecurityCenterPage />} />
         <Route path="/ai" element={<AiAssistantPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/profile/emergency" element={<EmergencyCardPage />} />
         <Route path="/patient" element={<Navigate to="/dashboard" replace />} />
         <Route path="/doctor" element={<Navigate to="/dashboard" replace />} />
       </Route>

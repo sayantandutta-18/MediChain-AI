@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { asyncHandler } from '../utils/asyncHandler';
 import { currentUser } from '../middleware/auth';
 import * as authService from '../services/authService';
+import { logSecurityEvent } from '../services/securityEventService';
 import { recordAuditEvent } from '../services/auditLogService';
 import {
   changePasswordSchema,
@@ -48,6 +49,14 @@ export const login = asyncHandler(async (req, res) => {
   const input = loginSchema.parse(req.body);
   try {
     const session = await authService.loginUser(input);
+    await logSecurityEvent({
+      userId: session.user.id,
+      type: 'LOGIN_SUCCESS',
+      ipAddress: req.ip || req.socket.remoteAddress || 'unknown',
+      userAgent: req.headers['user-agent'],
+      severity: 'low',
+    });
+
     audit(req, 'auth.login', 'SUCCESS', {
       actorId: session.user.id,
       actorRole: session.user.role,
@@ -55,6 +64,14 @@ export const login = asyncHandler(async (req, res) => {
     });
     res.json({ success: true, data: session });
   } catch (error) {
+    await logSecurityEvent({
+      type: 'LOGIN_FAILED',
+      ipAddress: req.ip || req.socket.remoteAddress || 'unknown',
+      userAgent: req.headers['user-agent'],
+      severity: 'medium',
+      details: { email: input.email },
+    });
+
     audit(req, 'auth.login_failed', 'FAILURE', { actorEmail: input.email });
     throw error;
   }

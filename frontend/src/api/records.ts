@@ -41,6 +41,27 @@ export const recordsApi = {
     return data.data.record;
   },
 
+  uploadVersion: async (recordId: string, file: File): Promise<MedicalRecord> => {
+    const form = new FormData();
+    form.append('file', file);
+    const { data } = await apiClient.post<Envelope<{ record: MedicalRecord }>>(`/records/${recordId}/versions`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data.data.record;
+  },
+
+  getVersions: async (recordId: string): Promise<any[]> => {
+    const { data } = await apiClient.get<Envelope<{ versions: any[] }>>(`/records/${recordId}/versions`);
+    return data.data.versions;
+  },
+
+  downloadVersion: async (recordId: string, versionNumber: number): Promise<Blob> => {
+    const { data } = await apiClient.get(`/records/${recordId}/versions/${versionNumber}/download`, {
+      responseType: 'blob',
+    });
+    return data;
+  },
+
   update: async (
     recordId: string,
     payload: Partial<Pick<MedicalRecord, 'title' | 'description' | 'category'>>,

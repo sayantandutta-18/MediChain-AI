@@ -96,6 +96,13 @@ export const env = {
     packageId: str('SUI_PACKAGE_ID'),
     registryId: str('SUI_REGISTRY_ID'),
     mnemonic: str('SUI_ENV_MNEMONIC'),
+    // The Sui SDK convention for a raw ed25519 secret key. Accepted as an
+    // alternative to a mnemonic so either credential style works.
+    privateKey: str('SUI_PRIVATE_KEY'),
+    // Optional JSON-RPC endpoint override. The public Sui fullnode no longer
+    // serves JSON-RPC (it is gRPC/GraphQL only), so anchoring and structured
+    // object reads need a JSON-RPC-capable provider when set explicitly.
+    rpcUrl: str('SUI_RPC_URL'),
     editorMode: str('SUI_EDITOR_MODE', 'false') === 'true',
   },
 

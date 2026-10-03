@@ -1,5 +1,5 @@
 import mongoose, { Schema, type Model } from 'mongoose';
-import type { AuditResult, UserRole } from '../types/enums';
+import { USER_ROLES, type AuditResult, type UserRole } from '../types/enums';
 
 export type AuditAction =
   | 'auth.register'
@@ -20,7 +20,14 @@ export type AuditAction =
   | 'access.revoke'
   | 'access.list'
   | 'ai.analyze'
-  | 'audit.view';
+  | 'audit.view'
+  | 'notification.mark_all_read'
+  | 'admin.verify_doctor'
+  | 'emergency.access'
+  | 'emergency.update'
+  | 'record.share_link_generated'
+  | 'record.accessed_via_link'
+  | 'record.downloaded_via_link';
 
 export interface IAuditLog {
   actor?: mongoose.Types.ObjectId;
@@ -43,7 +50,7 @@ export interface IAuditLog {
 const auditLogSchema = new Schema<IAuditLog>(
   {
     actor: { type: Schema.Types.ObjectId, ref: 'User', index: true },
-    actorRole: { type: String, enum: ['patient', 'doctor'] },
+    actorRole: { type: String, enum: USER_ROLES },
     actorEmail: { type: String },
     action: { type: String, required: true, index: true },
     resourceType: { type: String },

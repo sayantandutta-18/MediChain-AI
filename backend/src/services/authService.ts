@@ -20,6 +20,8 @@ const toPublicUser = (user: IUser) => ({
   specialty: user.specialty,
   registrationNumber: user.registrationNumber,
   hospital: user.hospital,
+  experience: user.experience,
+  verificationStatus: user.verificationStatus,
   isActive: user.isActive,
   createdAt: user.createdAt,
   lastLoginAt: user.lastLoginAt,
@@ -49,7 +51,7 @@ export const registerUser = async (input: RegisterInput) => {
     passwordHash,
     role: input.role as UserRole,
     ...(input.role === 'doctor'
-      ? { specialty: input.specialty, registrationNumber: input.registrationNumber, hospital: input.hospital }
+      ? { specialty: input.specialty, registrationNumber: input.registrationNumber, hospital: input.hospital, experience: input.experience }
       : {}),
   } as Partial<IUser>);
 
@@ -95,7 +97,7 @@ export const listDoctors = async (search?: string) => {
     ];
   }
   const doctors = await User.find(filter)
-    .select('name email specialty registrationNumber hospital createdAt')
+    .select('name email specialty registrationNumber hospital experience verificationStatus createdAt')
     .sort({ name: 1 })
     .limit(100)
     .lean();
@@ -106,6 +108,8 @@ export const listDoctors = async (search?: string) => {
     specialty: doc.specialty ?? null,
     registrationNumber: doc.registrationNumber ?? null,
     hospital: doc.hospital ?? null,
+    experience: doc.experience ?? null,
+    verificationStatus: doc.verificationStatus ?? null,
   }));
 };
 
@@ -118,6 +122,7 @@ export const updateProfile = async (userId: string, input: UpdateProfileInput) =
     if (input.specialty !== undefined) user.specialty = input.specialty;
     if (input.registrationNumber !== undefined) user.registrationNumber = input.registrationNumber;
     if (input.hospital !== undefined) user.hospital = input.hospital;
+    if (input.experience !== undefined) user.experience = input.experience;
   }
 
   await user.save();

@@ -116,6 +116,53 @@ const normaliseTerminology = (value: unknown): Array<{ term: string; explanation
 const URGENCIES = new Set(['routine', 'discuss-soon', 'prompt-attention']);
 
 /**
+ * Maps provider failures onto controlled, human-readable API errors.
+ *
+ * Upstream problems (no credits, rejected key, throttling) are not internal
+ * server bugs, so they must not surface as a generic 500. Provider internals
+ * are never forwarded to the client.
+ */
+export const translateProviderError = (error: unknown): ApiError => {
+  const err = error as { status?: number; code?: string; error?: { type?: string; code?: string }; message?: string };
+
+  // SDK throws APIError subclasses that expose `status` and `code`.
+  if (err && typeof err === 'object') {
+    const type = err.code ?? err.error?.type;
+
+    if (err.status === 401 || type === 'invalid_api_key' || type === 'authentication_error') {
+      return new ApiError(
+        503,
+        'AI_NOT_CONFIGURED',
+        'The AI assistant is not available because the server credential was rejected. ' +
+          'Check OPENAI_API_KEY on the server.',
+      );
+    }
+
+    if (type === 'insufficient_quota' || err.status === 429) {
+      return new ApiError(
+        503,
+        'AI_QUOTA_EXCEEDED',
+        'The AI assistant is temporarily unavailable because the provider account has no credits. ' +
+          'Add credits to the AI provider account, then try again. Everything else keeps working.',
+      );
+    }
+
+    if (err.status && err.status >= 500) {
+      return new ApiError(
+        503,
+        'AI_PROVIDER_ERROR',
+        'The AI provider is temporarily unavailable. Please try again shortly.',
+      );
+    }
+  }
+
+  return ApiError.serviceUnavailable(
+    'The AI assistant could not complete this request. Please try again.',
+    'AI_REQUEST_FAILED',
+  );
+};
+
+/**
  * TRD-15/PRD-6: browser -> backend -> provider. Credentials never reach the client.
  * Authorization is re-checked here: the AI can only read records the caller may read.
  */
@@ -128,30 +175,38 @@ export const analyzeRecord = async (user: AuthenticatedUser, input: AnalyzeRecor
 
   const openai = getClient();
 
-  const completion = await openai.chat.completions.create({
-    model: env.ai.model,
-    temperature: 0.2,
-    response_format: { type: 'json_object' },
-    messages: [
-      {
-        role: 'system',
-        content:
-          'You explain medical documents to laypeople. You never diagnose or prescribe. ' +
-          'You always return a single JSON object and no surrounding text.',
-      },
-      {
-        role: 'user',
-        content: buildPrompt({
-          title: record.title,
-          category: record.category,
-          description: record.description,
-          content: full?.extractedText,
-          question: input.question,
-          simpleLanguage: input.language === 'simple-en',
-        }),
-      },
-    ],
-  });
+  let completion;
+  try {
+    completion = await openai.chat.completions.create({
+      model: env.ai.model,
+      temperature: 0.2,
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You explain medical documents to laypeople. You never diagnose or prescribe. ' +
+            'You always return a single JSON object and no surrounding text.',
+        },
+        {
+          role: 'user',
+          content: buildPrompt({
+            title: record.title,
+            category: record.category,
+            description: record.description,
+            content: full?.extractedText,
+            question: input.question,
+            simpleLanguage: input.language === 'simple-en',
+          }),
+        },
+      ],
+    });
+  } catch (error) {
+    // Already a controlled ApiError (e.g. AI_NOT_CONFIGURED) passes through.
+    if (error instanceof ApiError) throw error;
+    logger.error('AI provider request failed', error);
+    throw translateProviderError(error);
+  }
 
   const raw = completion.choices[0]?.message?.content;
   if (!raw) {

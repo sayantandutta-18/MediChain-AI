@@ -79,12 +79,24 @@ class SuiAnchorService {
   private getJsonRpc(): SuiClient {
     if (!this.jsonRpcClient) {
       const network = toNetwork();
+      const url = env.sui.rpcUrl || getFullnodeUrl(network);
       this.jsonRpcClient = new SuiClient({
         network,
-        transport: new SuiHTTPTransport({ url: getFullnodeUrl(network) }),
+        transport: new SuiHTTPTransport({ url }),
       });
     }
     return this.jsonRpcClient;
+  }
+
+  /** Builds the signing key from either credential style the SDK accepts. */
+  private getKeypair(): Ed25519Keypair {
+    if (env.sui.privateKey) {
+      return Ed25519Keypair.fromSecretKey(Buffer.from(env.sui.privateKey.trim()));
+    }
+    if (env.sui.mnemonic) {
+      return Ed25519Keypair.fromSecretKey(Buffer.from(env.sui.mnemonic, 'utf8'));
+    }
+    throw new Error('No Sui signing credential configured (set SUI_PRIVATE_KEY or SUI_ENV_MNEMONIC).');
   }
 
   /**
@@ -112,11 +124,7 @@ class SuiAnchorService {
     }
 
     try {
-      if (!env.sui.mnemonic) {
-        throw new Error('SUI_ENV_MNEMONIC is required to publish an anchor transaction.');
-      }
-
-      const keypair = Ed25519Keypair.fromSecretKey(Buffer.from(env.sui.mnemonic, 'utf8'));
+      const keypair = this.getKeypair();
 
       const tx = new Transaction();
       tx.setSender(keypair.getPublicKey().toSuiAddress());
@@ -188,22 +196,47 @@ class SuiAnchorService {
     };
   }
 
-  /** Sanity check that the configured network is reachable over gRPC / JSON-RPC. */
-  async health(): Promise<{ network: string; configured: boolean; reachable: boolean; error?: string }> {
+  /**
+   * Reachability probe.
+   *
+   * Uses gRPC deliberately: the public Sui fullnode has deprecated JSON-RPC, so
+   * probing it over JSON-RPC would always fail and would report the network as
+   * unreachable even when gRPC is healthy. `getReferenceGasPrice` is a cheap,
+   * side-effect-free liveness call (verified returning a value against testnet).
+   *
+   * `configured` stays false until both a published Move package id and the
+   * shared registry object id are supplied - we never imply a live chain anchor
+   * that cannot actually be addressed.
+   */
+  async health(): Promise<{ network: string; configured: boolean; reachable: boolean; rpcMode: string; error?: string }> {
+    const rpcMode = env.sui.rpcUrl ? 'custom-jsonrpc' : 'default';
     try {
-      if (env.sui.registryId) {
-        await this.getGrpc().core.getObjects({ objectIds: [env.sui.registryId] });
-      } else {
-        await this.getJsonRpc().getLatestCheckpointSequenceNumber();
-      }
-      return { network: env.sui.network, configured: this.isConfigured, reachable: true };
-    } catch (error) {
+      await this.getGrpc().core.getReferenceGasPrice();
       return {
         network: env.sui.network,
         configured: this.isConfigured,
-        reachable: false,
-        error: error instanceof Error ? error.message : 'unreachable',
+        reachable: true,
+        rpcMode,
       };
+    } catch (grpcError) {
+      try {
+        // A custom JSON-RPC endpoint may still be usable for reads.
+        await this.getJsonRpc().getLatestCheckpointSequenceNumber();
+        return {
+          network: env.sui.network,
+          configured: this.isConfigured,
+          reachable: true,
+          rpcMode,
+        };
+      } catch {
+        return {
+          network: env.sui.network,
+          configured: this.isConfigured,
+          reachable: false,
+          rpcMode,
+          error: grpcError instanceof Error ? grpcError.message.slice(0, 200) : 'unreachable',
+        };
+      }
     }
   }
 

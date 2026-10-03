@@ -26,6 +26,7 @@ export const registerSchema = z
     specialty: z.string().trim().max(120).optional(),
     registrationNumber: z.string().trim().max(60).optional(),
     hospital: z.string().trim().max(160).optional(),
+    experience: z.string().trim().max(120).optional(),
   })
   .strict()
   .superRefine((data, ctx) => {
@@ -51,6 +52,7 @@ export const updateProfileSchema = z
     specialty: z.string().trim().max(120).optional(),
     registrationNumber: z.string().trim().max(60).optional(),
     hospital: z.string().trim().max(160).optional(),
+    experience: z.string().trim().max(120).optional(),
   })
   .strict();
 
