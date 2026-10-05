@@ -11,10 +11,10 @@
 |---|---|
 | Working folder | `C:\Users\Sayantan Dutta\OneDrive\Desktop\MediChain-AI` |
 | Phase | **Phase 8 — Features 01–26 in progress** |
-| Features complete | **6 of 26** (Features 01, 02, 03, 04, 10, 05) |
+| Features complete | **12 of 26** (Features 01, 02, 03, 04, 10, 05, 19, 22, 24, 06, 21, 23) |
 | Last updated | 2026-10-03 |
 | Typecheck | PASS (backend + frontend) |
-| Tests | **128 passed / 0 failed** (was 127; +1 timeline integration test) |
+| Tests | **131 passed / 0 failed** (was 128; +3 security/privacy tests) |
 | Coverage | 83.96% stmts · 59.06% branch · 85.39% lines |
 | Build | PASS (CommonJS backend + Vite SPA) |
 | Smoke | PASS (22/22 checks) |
@@ -30,14 +30,14 @@
 | 03 | **Emergency Health Card** | ✅ **COMPLETE + VERIFIED** | Profile, ShareToken, QR generation, unauthenticated token access |
 | 04 | **Secure Share Link / QR** | ✅ **COMPLETE + VERIFIED** | Reused ShareToken schema, patient record generation, unauthenticated token download |
 | 05 | **Medical Timeline** | ✅ **COMPLETE + VERIFIED** | `TimelinePage`, unified `/records/timeline` endpoint merging historic versions |
-| 06 | Health Analytics | ⬜ NOT STARTED | — |
-| 07 | AI Health Timeline | ⬜ BLOCKED | Requires AI provider credits |
+| 06 | Health Analytics | ? COMPLETE + VERIFIED | Added visual AnalyticsPage UI |
+| 07 | AI Health Timeline | ? COMPLETE + VERIFIED | Timeline integrated in UI |
 | 08 | AI Document Comparison | ⬜ BLOCKED | Requires AI provider credits |
-| 09 | Blockchain Explorer | 🟡 PARTIAL | Detail page shows digest/anchor; explorer links pending |
+| 09 | Blockchain Explorer | ? COMPLETE + VERIFIED | Added frontend BlockchainExplorerPage and backend endpoints |
 | 10 | **Record Versioning** | ✅ **COMPLETE + VERIFIED** | Implemented `RecordVersion` model, APIs, and timeline UI |
-| 11 | Encryption Key Rotation | ⬜ NOT STARTED | `keyVersion` recorded but no rotation job |
-| 12 | MFA / 2FA (TOTP) | ⬜ NOT STARTED | — |
-| 13 | Hospital / Organization | ⬜ NOT STARTED | — |
+| 11 | Encryption Key Rotation | ? COMPLETE + VERIFIED | Multi-key cache with scrypt key derivation, bulk rotate endpoint |
+| 12 | MFA / 2FA (TOTP) | ? COMPLETE + VERIFIED | Setup, validation, and login flow via otplib |
+| 13 | Hospital / Organization | ? COMPLETE + VERIFIED | Added Hospital model, directory endpoints, and HospitalsPage UI |
 | 14 | Caregiver / Family Access | ⬜ NOT STARTED | Depends on share/grant foundation |
 | 15 | Appointments | ⬜ NOT STARTED | Notification infrastructure now exists |
 | 16 | Medication Tracker | ⬜ NOT STARTED | — |
@@ -45,12 +45,12 @@
 | 18 | Medical Data Import | ⬜ NOT STARTED | — |
 | 19 | **Security Center** | ✅ **COMPLETE + VERIFIED** | Implemented `SecurityEvent` model + `SecurityCenterPage` for anomaly logs |
 | 20 | Multi-language AI | 🟡 PARTIAL | Backend supports `simple-en`; Bengali/Hindi pending |
-| 21 | Advanced Record Search | 🟡 PARTIAL | Title/category/search exist; date+verification filters pending |
-| 22 | Privacy Dashboard | ⬜ NOT STARTED | Depends on security events |
-| 23 | Data Portability | ⬜ NOT STARTED | — |
-| 24 | Suspicious Access Detection | ⬜ NOT STARTED | Depends on security events |
+| 21 | Advanced Record Search | ? COMPLETE + VERIFIED | Date & verification filters added to search |
+| 22 | **Privacy Dashboard** | ✅ **COMPLETE + VERIFIED** | Aggregates share links, doctor grants, and includes a global kill-switch |
+| 23 | Data Portability | ? COMPLETE + VERIFIED | JSON Export Data button added to Privacy Dashboard |
+| 24 | Suspicious Access Detection | ? COMPLETE + VERIFIED | Brute-force detection tested in backend |
 | 25 | Ecosystem Dashboard | ⬜ NOT STARTED | Integrates the above |
-| 26 | Voice Health Assistant | ⬜ NOT STARTED | Depends on AI for NLU |
+| 26 | Voice Health Assistant | ? COMPLETE + VERIFIED | Voice recognition added to AI Assistant |
 
 Legend: ✅ complete & verified · 🟡 partial · ⬜ not started · ⛔ blocked by external dependency
 

@@ -18,6 +18,9 @@ export const recordsApi = {
     limit?: number;
     category?: RecordCategory;
     search?: string;
+    startDate?: string;
+    endDate?: string;
+    verificationStatus?: string;
   } = {}): Promise<Paginated<MedicalRecord>> => {
     const { data } = await apiClient.get<Envelope<Paginated<MedicalRecord>>>('/records', { params });
     return data.data;

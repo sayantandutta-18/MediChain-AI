@@ -1,11 +1,25 @@
 import { apiClient } from './client';
 import type { AuthSession, DoctorSummary, User } from '@/types';
 
+export interface Envelope<T> { data: T; }
+
+export interface MfaSetupResponse {
+  qrCodeUrl: string;
+  secret: string;
+}
+
 interface SessionResponse {
   data: AuthSession;
 }
 
 export const authApi = {
+  setupMfa: async () => {
+    const { data } = await apiClient.post<Envelope<MfaSetupResponse>>('/auth/mfa/setup');
+    return data.data;
+  },
+  verifyMfa: async (code: string) => {
+    await apiClient.post('/auth/mfa/verify', { code });
+  },
   register: async (payload: {
     name: string;
     email: string;
@@ -19,8 +33,8 @@ export const authApi = {
     return data.data;
   },
 
-  login: async (email: string, password: string): Promise<AuthSession> => {
-    const { data } = await apiClient.post<SessionResponse>('/auth/login', { email, password });
+  login: async (email: string, password: string, totpCode?: string): Promise<AuthSession> => {
+    const { data } = await apiClient.post<SessionResponse>('/auth/login', { email, password, totpCode });
     return data.data;
   },
 

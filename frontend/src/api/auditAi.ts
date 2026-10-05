@@ -13,6 +13,10 @@ export const auditApi = {
 };
 
 export const aiApi = {
+  generateTimeline: async () => {
+    const { data } = await apiClient.get<Envelope<any>>('/ai/timeline');
+    return data.data;
+  },
   analyze: async (payload: { recordId: string; question?: string; language?: 'en' | 'simple-en' }) => {
     const { data } = await apiClient.post<Envelope<{ report: AiReport }>>('/ai/analyze', payload);
     return data.data.report;

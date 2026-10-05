@@ -14,6 +14,8 @@ export interface IUser {
   experience?: string;
   verificationStatus?: DoctorVerificationStatus;
   isActive: boolean;
+  twoFactorSecret?: string;
+  isTwoFactorEnabled: boolean;
   lastLoginAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -49,6 +51,8 @@ const userSchema = new Schema<IUser>(
       default: function(this: any) { return this.role === 'doctor' ? 'PENDING' : undefined; }
     },
     isActive: { type: Boolean, default: true },
+    twoFactorSecret: { type: String, select: false },
+    isTwoFactorEnabled: { type: Boolean, default: false },
     lastLoginAt: { type: Date },
   },
   { timestamps: true, versionKey: false },

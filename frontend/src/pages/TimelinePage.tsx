@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Activity, Calendar, FileText, UploadCloud } from 'lucide-react';
+import { aiApi } from '@/api/auditAi';
+import { Activity, Calendar, FileText, UploadCloud, BrainCircuit } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { apiClient } from '@/api/client';
+import { useAuth } from '@/context/AuthContext';
 
 import { formatDateTime, titleCase } from '@/utils/format';
 import { Badge } from '@/components/ui/Badge';
@@ -24,8 +26,24 @@ interface TimelineEvent {
 }
 
 export const TimelinePage = () => {
+  const { user } = useAuth();
+  const isPatient = user?.role === 'patient';
   const [events, setEvents] = useState<TimelineEvent[]>([]);
+  const [aiNarrative, setAiNarrative] = useState<{ narrative: string, events: any[] } | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  const loadAiTimeline = async () => {
+    setIsAiLoading(true);
+    try {
+      const result = await aiApi.generateTimeline();
+      setAiNarrative(result);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchTimeline = async () => {
@@ -53,6 +71,26 @@ export const TimelinePage = () => {
         <h1 className="text-2xl font-bold tracking-tight text-white">Medical Timeline</h1>
         <p className="text-slate-400 mt-1">A chronological history of all your medical records and updates.</p>
       </div>
+      {isPatient && (
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <BrainCircuit className="h-5 w-5 text-indigo-400" />
+              <h2 className="text-lg font-semibold text-white">AI Health Narrative</h2>
+            </div>
+            {!aiNarrative && (
+              <button onClick={loadAiTimeline} disabled={isAiLoading} className="btn-primary">
+                {isAiLoading ? 'Generating...' : 'Generate Narrative'}
+              </button>
+            )}
+          </div>
+          {aiNarrative && (
+            <div className="space-y-4">
+              <p className="text-slate-300 leading-relaxed">{aiNarrative.narrative}</p>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="relative border-l border-slate-700 ml-4 space-y-8 pb-8">
         {events.length === 0 ? (

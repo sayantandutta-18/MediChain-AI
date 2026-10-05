@@ -18,6 +18,8 @@ export const LoginPage = () => {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [totpCode, setTotpCode] = useState('');
+  const [requiresMfa, setRequiresMfa] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,13 +33,18 @@ export const LoginPage = () => {
     setIsSubmitting(true);
 
     try {
-      await login(email.trim(), password);
+      await login(email.trim(), password, totpCode);
       navigate(redirectTo, { replace: true });
     } catch (err) {
       const apiError = toError(err);
       reportFailure(err);
-      setError(isApiOffline(apiError) ? null : apiError.message);
+      if (apiError.code === 'MFA_REQUIRED') {
+          setRequiresMfa(true);
+          setError('Two-factor authentication required.');
+        } else {
+          setError(isApiOffline(apiError) ? null : apiError.message);
       setFieldErrors(isApiOffline(apiError) ? {} : toFieldErrors(apiError));
+        }
     } finally {
       setIsSubmitting(false);
     }
@@ -74,6 +81,22 @@ export const LoginPage = () => {
           {isApiDown ? <ApiOfflineNotice className="mt-6" /> : null}
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
+              {requiresMfa && (
+                <div>
+                  <label htmlFor="totp" className="field-label">
+                    Authentication Code
+                  </label>
+                  <input
+                    id="totp"
+                    type="text"
+                    required
+                    value={totpCode}
+                    onChange={(e) => setTotpCode(e.target.value)}
+                    placeholder="6-digit code"
+                    className="field"
+                  />
+                </div>
+              )}
             <div>
               <label htmlFor="email" className="field-label">
                 Email

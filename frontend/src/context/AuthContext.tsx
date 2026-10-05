@@ -8,7 +8,7 @@ interface AuthContextValue {
   user: User | null;
   isAuthenticated: boolean;
   isBootstrapping: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, totpCode?: string) => Promise<void>;
   register: (payload: Parameters<typeof authApi.register>[0]) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -65,8 +65,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [clearSession]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const session = await authApi.login(email, password);
+  const login = useCallback(async (email: string, password: string, totpCode?: string) => {
+    const session = await authApi.login(email, password, totpCode);
     persist(session);
     setUser(session.user);
   }, []);

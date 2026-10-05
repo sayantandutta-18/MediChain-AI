@@ -21,7 +21,29 @@ export const logSecurityEvent = async (input: LogSecurityEventInput) => {
   try {
     const event = await SecurityEvent.create(input);
     
-    // Auto-alert on critical severity
+    // FEATURE 24: Suspicious Access Detection
+    if (input.type === 'LOGIN_FAILED') {
+      const fifteenMinsAgo = new Date(Date.now() - 15 * 60 * 1000);
+      const recentFailures = await SecurityEvent.countDocuments({
+        ipAddress: input.ipAddress,
+        type: 'LOGIN_FAILED',
+        createdAt: { $gte: fifteenMinsAgo }
+      });
+      
+      // If 5 or more failures from the same IP in 15 mins, flag it as anomalous
+      if (recentFailures >= 5) {
+        await SecurityEvent.create({
+          userId: input.userId,
+          type: 'UNAUTHORIZED_ACCESS_ATTEMPT',
+          ipAddress: input.ipAddress,
+          userAgent: input.userAgent,
+          severity: 'high',
+          details: { reason: 'Brute force login pattern detected', targetEmail: input.details?.email },
+        });
+        logger.warn(`[SECURITY ALERT] UNAUTHORIZED_ACCESS_ATTEMPT: Brute force detected from IP ${input.ipAddress}`);
+      }
+    }
+
     if (input.severity === 'critical') {
       logger.warn(`[SECURITY ALERT] ${input.type} triggered by ${input.userId || 'anonymous'} at ${input.ipAddress}`);
     }

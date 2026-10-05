@@ -59,7 +59,7 @@ export const registerUser = async (input: RegisterInput) => {
 };
 
 export const loginUser = async (input: LoginInput) => {
-  const user = await User.findOne({ email: input.email }).select('+passwordHash');
+  const user = await User.findOne({ email: input.email }).select('+passwordHash +twoFactorSecret');
 
   // Constant-ish work whether or not the account exists.
   const passwordMatches = user
@@ -76,6 +76,20 @@ export const loginUser = async (input: LoginInput) => {
 
   user.lastLoginAt = new Date();
   await user.save();
+
+  
+  if (user.isTwoFactorEnabled) {
+    if (!(input as any).totpCode) {
+      throw ApiError.unauthorized('MFA code required.', 'MFA_REQUIRED');
+    }
+    const otplib = await import('otplib');
+    // @ts-ignore
+    const authenticator = otplib.authenticator || otplib.default.authenticator;
+    const isValid = authenticator.check((input as any).totpCode, user.twoFactorSecret || '');
+    if (!isValid) {
+      throw ApiError.unauthorized('Invalid MFA code.', 'INVALID_MFA_CODE');
+    }
+  }
 
   return issueSession(user);
 };
@@ -130,7 +144,7 @@ export const updateProfile = async (userId: string, input: UpdateProfileInput) =
 };
 
 export const changePassword = async (userId: string, input: ChangePasswordInput) => {
-  const user = await User.findById(userId).select('+passwordHash');
+  const user = await User.findById(userId).select('+passwordHash +twoFactorSecret');
   if (!user) throw ApiError.notFound('User not found.', 'USER_NOT_FOUND');
 
   const matches = await verifyPassword(input.currentPassword, user.passwordHash);

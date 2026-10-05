@@ -242,3 +242,36 @@ export const aiHealth = () => ({
   configured: isAiConfigured(),
   model: env.ai.model,
 });
+
+
+export const generateTimelineNarrative = async (user: AuthenticatedUser, input: any) => {
+  if (!isAiConfigured()) {
+    throw ApiError.serviceUnavailable('The AI assistant is not configured.', 'AI_NOT_CONFIGURED');
+  }
+  const records = await MedicalRecord.find({ patient: user.id }).sort({ createdAt: 1 }).lean();
+  if (records.length === 0) return { narrative: 'No records available to build a timeline.', events: [] };
+
+  const timelineContext = records.map(r => `- : [] `).join('\n');
+  const prompt = `You are a medical assistant reviewing a patient's history. Based on the following chronological list of records, write a concise health timeline narrative.\n\n\n\nReturn JSON with exactly these keys:\n{\n  "narrative": string (a short patient-friendly paragraph summarizing their journey),\n  "events": Array<{ "date": string, "description": string }> (chronological highlights)\n}`;
+
+  const client = getClient();
+  try {
+    const completion = await client.chat.completions.create({
+      model: env.ai.model,
+      messages: [{ role: 'system', content: prompt }],
+      temperature: 0.0,
+      response_format: { type: 'json_object' },
+    });
+    const responseContent = completion.choices[0]?.message?.content;
+    if (!responseContent) throw new Error('Empty AI response');
+    const parsed = JSON.parse(responseContent);
+    return {
+      narrative: typeof parsed.narrative === 'string' ? parsed.narrative : 'Narrative unavailable.',
+      events: Array.isArray(parsed.events) ? parsed.events : [],
+      generatedAt: new Date().toISOString(),
+    };
+  } catch (err) {
+    logger.error('Timeline generation failed', { error: err instanceof Error ? err.message : 'Unknown error' });
+    throw ApiError.internal('Failed to generate AI timeline.', 'AI_GENERATION_FAILED');
+  }
+};

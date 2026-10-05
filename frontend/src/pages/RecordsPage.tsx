@@ -26,6 +26,9 @@ export const RecordsPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<RecordCategory | ''>('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [verificationStatus, setVerificationStatus] = useState('');
   const [page, setPage] = useState(1);
   const [isUploadOpen, setIsUploadOpen] = useState(searchParams.get('upload') === '1');
 
@@ -48,7 +51,7 @@ export const RecordsPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, category, search]);
+  }, [page, category, search, startDate, endDate, verificationStatus]);
 
   useEffect(() => {
     void load();
@@ -58,7 +61,7 @@ export const RecordsPage = () => {
   useEffect(() => {
     const timer = window.setTimeout(() => setPage(1), 300);
     return () => window.clearTimeout(timer);
-  }, [search, category]);
+  }, [search, category, startDate, endDate, verificationStatus]);
 
   const closeUpload = () => {
     setIsUploadOpen(false);
@@ -123,6 +126,38 @@ export const RecordsPage = () => {
                 {RECORD_CATEGORY_LABELS[item]}
               </option>
             ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center mt-3 border-t border-slate-800 pt-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400 w-12">From:</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="field flex-1 sm:w-auto text-sm"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400 w-12">To:</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="field flex-1 sm:w-auto text-sm"
+            />
+          </div>
+          <select
+            value={verificationStatus}
+            onChange={(e) => setVerificationStatus(e.target.value)}
+            aria-label="Filter by verification"
+            className="field flex-1 sm:w-auto text-sm"
+          >
+            <option value="" className="bg-ink-900">All Statuses</option>
+            <option value="ANCHORED" className="bg-ink-900">Anchored</option>
+            <option value="SIMULATED" className="bg-ink-900">Simulated</option>
+            <option value="PENDING" className="bg-ink-900">Pending</option>
+            <option value="FAILED" className="bg-ink-900">Failed</option>
           </select>
         </div>
       </Card>

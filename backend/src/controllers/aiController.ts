@@ -1,8 +1,14 @@
 import { asyncHandler } from '../utils/asyncHandler';
 import { currentUser } from '../middleware/auth';
-import { aiHealth, analyzeRecord } from '../services/aiService';
+import { aiHealth, analyzeRecord, generateTimelineNarrative } from '../services/aiService';
 import { recordAuditEvent } from '../services/auditLogService';
 import { analyzeRecordSchema } from '../validators/aiValidators';
+
+export const generateTimeline = asyncHandler(async (req, res) => {
+  const user = currentUser(req);
+  const result = await generateTimelineNarrative(user, req.query);
+  res.json({ success: true, data: result });
+});
 
 export const analyze = asyncHandler(async (req, res) => {
   const user = currentUser(req);

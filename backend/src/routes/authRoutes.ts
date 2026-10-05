@@ -18,3 +18,6 @@ router.post('/me/password', authenticate, authLimiter, validate({ body: changePa
 router.get('/doctors', authenticate, authorize('patient', 'doctor'), authController.listDoctors);
 
 export default router;
+
+router.post('/mfa/setup', authenticate, authController.setupMfa);
+router.post('/mfa/verify', authenticate, authController.verifyAndEnableMfa);

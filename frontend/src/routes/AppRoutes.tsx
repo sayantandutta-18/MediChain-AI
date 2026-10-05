@@ -23,6 +23,8 @@ const VerificationPage = lazy(() =>
 );
 const AuditPage = lazy(() => import('@/pages/AuditPage').then((m) => ({ default: m.AuditPage })));
 const SecurityCenterPage = lazy(() => import('@/pages/SecurityCenterPage').then((m) => ({ default: m.SecurityCenterPage })));
+const AnalyticsPage = lazy(() => import('@/pages/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })));
+const PrivacyDashboardPage = lazy(() => import('@/pages/PrivacyDashboardPage').then((m) => ({ default: m.PrivacyDashboardPage })));
 const TimelinePage = lazy(() => import('@/pages/TimelinePage').then((m) => ({ default: m.TimelinePage })));
 const EmergencyCardPage = lazy(() => import('@/pages/EmergencyCardPage').then((m) => ({ default: m.EmergencyCardPage })));
 const EmergencyAccessPage = lazy(() => import('@/pages/EmergencyAccessPage').then((m) => ({ default: m.EmergencyAccessPage })));
@@ -31,6 +33,9 @@ const AiAssistantPage = lazy(() =>
 );
 const ProfilePage = lazy(() => import('@/pages/ProfilePage').then((m) => ({ default: m.ProfilePage })));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
+const HospitalsPage = lazy(() => import('@/pages/HospitalsPage').then((m) => ({ default: m.HospitalsPage })));
+const BlockchainExplorerPage = lazy(() => import('@/pages/BlockchainExplorerPage').then((m) => ({ default: m.BlockchainExplorerPage })));
+const CaregiversPage = lazy(() => import('@/pages/CaregiversPage').then((m) => ({ default: m.CaregiversPage })));
 
 export const AppRoutes = () => (
   <Suspense fallback={<LoadingState label="Loading view…" className="min-h-[60vh]" />}>
@@ -46,11 +51,16 @@ export const AppRoutes = () => (
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/records" element={<RecordsPage />} />
         <Route path="/timeline" element={<TimelinePage />} />
+        <Route path="/hospitals" element={<HospitalsPage />} />
+        <Route path="/explorer" element={<BlockchainExplorerPage />} />
+        <Route path="/caregivers" element={<CaregiversPage />} />
         <Route path="/records/:recordId" element={<RecordDetailPage />} />
         <Route path="/access-requests" element={<AccessRequestsPage />} />
         <Route path="/verification" element={<VerificationPage />} />
         <Route path="/audit" element={<AuditPage />} />
         <Route path="/security" element={<SecurityCenterPage />} />
+        <Route path="/privacy" element={<PrivacyDashboardPage />} />
+        <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/ai" element={<AiAssistantPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/profile/emergency" element={<EmergencyCardPage />} />

@@ -10,3 +10,6 @@ export const analyzeRecordSchema = z
   .strict();
 
 export type AnalyzeRecordInput = z.infer<typeof analyzeRecordSchema>;
+
+export const generateTimelineSchema = z.object({ language: z.enum(['en', 'simple-en']).default('en') });
+export type GenerateTimelineInput = z.infer<typeof generateTimelineSchema>;

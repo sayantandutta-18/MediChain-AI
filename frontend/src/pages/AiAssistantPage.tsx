@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, HelpCircle, Sparkles } from 'lucide-react';
+import { BookOpen, HelpCircle, Sparkles, Mic, MicOff } from 'lucide-react';
 import { useAuth, toError } from '@/context/AuthContext';
 import { aiApi } from '@/api/auditAi';
 import { recordsApi } from '@/api/records';
@@ -24,6 +24,32 @@ export const AiAssistantPage = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isConfigured, setIsConfigured] = useState<boolean | null>(null);
+  const [isListening, setIsListening] = useState(false);
+
+  const handleListen = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Voice recognition is not supported in this browser.');
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = language === 'simple-en' ? 'en-US' : 'en-US';
+    
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend = () => setIsListening(false);
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setQuestion(prev => (prev ? prev + ' ' : '') + transcript);
+    };
+    
+    if (isListening) {
+      recognition.stop();
+    } else {
+      recognition.start();
+    }
+  };
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -139,15 +165,24 @@ export const AiAssistantPage = () => {
               <label htmlFor="ai-question" className="field-label">
                 What do you want to understand?
               </label>
-              <input
-                id="ai-question"
-                type="text"
-                value={question}
-                onChange={(event) => setQuestion(event.target.value)}
-                placeholder="e.g. What should I ask about these results?"
-                className="field"
-                maxLength={500}
-              />
+              <div className="relative flex items-center">
+                <input
+                  id="ai-question"
+                  type="text"
+                  value={question}
+                  onChange={(event) => setQuestion(event.target.value)}
+                  placeholder="e.g. What should I ask about these results?"
+                  className="field pr-12"
+                  maxLength={500}
+                />
+                <button 
+                  type="button"
+                  onClick={handleListen}
+                  className={`absolute right-2 p-1.5 rounded-full transition-colors ${isListening ? 'bg-red-500/20 text-red-400' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+                >
+                  {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
 
             <div>

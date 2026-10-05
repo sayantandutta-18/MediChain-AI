@@ -8,5 +8,9 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/events', securityController.getMySecurityEvents);
+router.get('/privacy-dashboard', securityController.getPrivacyDashboard);
+router.post('/privacy-dashboard/revoke-all', securityController.revokeAllAccess);
 
 export const securityRoutes = router;
+
+router.post('/rotate-keys', authenticate, securityController.rotateEncryptionKeys);

@@ -113,7 +113,10 @@ export const listRecords = async (user: AuthenticatedUser, input: ListRecordsInp
   const filter: Record<string, unknown> = {};
 
   if (user.role === 'patient') {
-    filter.patient = user.id;
+    const { CaregiverAccess } = await import('../models/CaregiverAccess.js');
+    const caregiverGrants = await CaregiverAccess.find({ caregiverId: user.id, isActive: true });
+    const accessiblePatientIds = [user.id, ...caregiverGrants.map(g => g.patientId.toString())];
+    filter.patient = { $in: accessiblePatientIds };
   } else {
     // Doctors only see records of patients who granted an unexpired approval.
     const patientIds = await listAccessiblePatientIds(user.id);
@@ -121,6 +124,16 @@ export const listRecords = async (user: AuthenticatedUser, input: ListRecordsInp
   }
 
   if (input.category) filter.category = input.category;
+  if (input.startDate || input.endDate) {
+    const dateFilter: Record<string, Date> = {};
+    if (input.startDate) dateFilter['$gte'] = new Date(input.startDate);
+    if (input.endDate) dateFilter['$lte'] = new Date(input.endDate);
+    filter.createdAt = dateFilter;
+  }
+  if (input.verificationStatus) {
+    filter['blockchain.status'] = input.verificationStatus;
+  }
+
   if (input.search) {
     filter.$or = [
       { title: { $regex: input.search, $options: 'i' } },
@@ -342,7 +355,7 @@ export const recordStats = async (user: AuthenticatedUser) => {
       ? { patient: new mongoose.Types.ObjectId(user.id) }
       : { patient: { $in: (await listAccessiblePatientIds(user.id)).map((id) => new mongoose.Types.ObjectId(id)) } };
 
-  const [total, anchored, unanchored, categories] = await Promise.all([
+  const [total, anchored, unanchored, categories, uploadsByMonth] = await Promise.all([
     MedicalRecord.countDocuments(filter),
     MedicalRecord.countDocuments({ ...filter, 'blockchain.status': { $in: ['ANCHORED', 'SIMULATED'] } }),
     MedicalRecord.countDocuments({ ...filter, 'blockchain.status': { $in: ['PENDING', 'FAILED'] } }),
@@ -351,6 +364,19 @@ export const recordStats = async (user: AuthenticatedUser) => {
       { $group: { _id: '$category', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
     ]),
+    MedicalRecord.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+            month: { $month: '$createdAt' }
+          },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } }
+    ]),
   ]);
 
   return {
@@ -358,5 +384,9 @@ export const recordStats = async (user: AuthenticatedUser) => {
     anchored,
     unanchored,
     categories: categories.map((item) => ({ category: item._id as string, count: item.count as number })),
+    uploadsByMonth: uploadsByMonth.map((item) => ({
+      label: `${item._id.year}-${String(item._id.month).padStart(2, '0')}`,
+      count: item.count as number
+    }))
   };
 };

@@ -7,6 +7,8 @@ import {
   LogOut,
   Menu,
   ScrollText,
+  EyeOff,
+  BarChart3,
   Shield,
   Sparkles,
   Stethoscope,
@@ -68,6 +70,18 @@ const NAV_ITEMS: NavItem[] = [
     to: '/security',
     label: 'Security center',
     icon: <Shield className="h-[18px] w-[18px]" aria-hidden="true" />,
+    roles: ['patient', 'doctor'],
+  },
+  {
+    to: '/privacy',
+    label: 'Privacy dashboard',
+    icon: <EyeOff className="h-[18px] w-[18px]" aria-hidden="true" />,
+    roles: ['patient'],
+  },
+  {
+    to: '/analytics',
+    label: 'Health analytics',
+    icon: <BarChart3 className="h-[18px] w-[18px]" aria-hidden="true" />,
     roles: ['patient', 'doctor'],
   },
   {

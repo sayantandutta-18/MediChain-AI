@@ -43,6 +43,7 @@ export const loginSchema = z
   .object({
     email,
     password: z.string().min(1, 'Password is required').max(128),
+    totpCode: z.string().optional(),
   })
   .strict();
 

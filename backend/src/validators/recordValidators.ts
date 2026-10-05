@@ -33,6 +33,9 @@ export const listRecordsSchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
   category: z.enum(RECORD_CATEGORIES).optional(),
   search: z.string().trim().max(160).optional(),
+  startDate: z.string().datetime().optional(),
+  endDate: z.string().datetime().optional(),
+  verificationStatus: z.enum(['ANCHORED', 'SIMULATED', 'PENDING', 'FAILED']).optional(),
 });
 
 export type UploadRecordInput = z.infer<typeof uploadRecordSchema>;

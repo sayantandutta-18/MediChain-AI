@@ -10,5 +10,6 @@ router.use(authenticate);
 
 router.get('/status', aiController.status);
 router.post('/analyze', validate({ body: analyzeRecordSchema }), aiController.analyze);
+router.get('/timeline', aiController.generateTimeline);
 
 export default router;

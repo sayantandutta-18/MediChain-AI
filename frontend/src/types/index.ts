@@ -21,6 +21,7 @@ export interface User {
   experience: string | null;
   verificationStatus: 'PENDING' | 'VERIFIED' | 'REJECTED' | null;
   isActive: boolean;
+  isTwoFactorEnabled: boolean;
   createdAt: string;
   lastLoginAt: string | null;
 }

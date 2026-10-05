@@ -77,9 +77,13 @@ export const assertRecordAccess = async (
 ): Promise<{ accessRequest: IAccessRequest | null }> => {
   if (user.role === 'patient') {
     if (record.patient.toString() !== user.id) {
-      throw ApiError.forbidden('You can only access your own medical records.', {
-        code: 'NOT_RECORD_OWNER',
-      });
+      const { CaregiverAccess } = await import('../models/CaregiverAccess.js');
+      const isCaregiver = await CaregiverAccess.exists({ caregiverId: user.id, patientId: record.patient, isActive: true });
+      if (!isCaregiver) {
+        throw ApiError.forbidden('You can only access your own medical records.', {
+          code: 'NOT_RECORD_OWNER',
+        });
+      }
     }
     return { accessRequest: null };
   }

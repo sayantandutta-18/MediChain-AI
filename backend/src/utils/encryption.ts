@@ -19,31 +19,35 @@ export interface EncryptedPayload {
 
 let cachedKey: Buffer | null = null;
 
-const resolveKey = (): Buffer => {
-  if (cachedKey) return cachedKey;
+const keyCache = new Map<string, Buffer>();
+
+const resolveKey = (version: string): Buffer => {
+  if (keyCache.has(version)) return keyCache.get(version)!;
 
   const { keyHex, passphrase } = env.encryption;
 
-  if (keyHex) {
-    cachedKey = Buffer.from(keyHex, 'hex');
+  let key: Buffer;
+  if (keyHex && version === env.encryption.keyVersion) {
+    key = Buffer.from(keyHex, 'hex');
   } else {
     if (!passphrase) {
       throw ApiError.internal('Server encryption key is not configured.', 'ENCRYPTION_MISCONFIGURED');
     }
-    // Deterministic 32 byte key derived from the passphrase (scrypt, N=2^15).
-    cachedKey = scryptSync(passphrase, 'medichain-ai.encryption.salt.v1', 32);
+    // Deterministic 32 byte key derived from the passphrase and version
+    key = scryptSync(passphrase, `medichain-ai.encryption.salt.${version}`, 32);
   }
 
-  if (cachedKey.length !== 32) {
+  if (key.length !== 32) {
     throw ApiError.internal('Server encryption key must be 32 bytes.', 'ENCRYPTION_MISCONFIGURED');
   }
 
-  return cachedKey;
+  keyCache.set(version, key);
+  return key;
 };
 
 /** Test helper: forget the memoised key. */
 export const __resetKeyCache = (): void => {
-  cachedKey = null;
+  keyCache.clear();
 };
 
 /**
@@ -52,7 +56,7 @@ export const __resetKeyCache = (): void => {
  */
 export const encryptBuffer = (plaintext: Buffer): EncryptedPayload => {
   const iv = randomBytes(IV_LENGTH);
-  const cipher = createCipheriv(ENCRYPTION_ALGORITHM, resolveKey(), iv);
+  const cipher = createCipheriv(ENCRYPTION_ALGORITHM, resolveKey(env.encryption.keyVersion), iv);
   const encrypted = Buffer.concat([cipher.update(plaintext), cipher.final()]);
   const authTag = cipher.getAuthTag();
 
@@ -78,7 +82,7 @@ export const decryptPayload = (payload: EncryptedPayload): Buffer => {
   }
 
   try {
-    const decipher = createDecipheriv(ENCRYPTION_ALGORITHM, resolveKey(), Buffer.from(payload.iv, 'base64'));
+    const decipher = createDecipheriv(ENCRYPTION_ALGORITHM, resolveKey(payload.keyVersion), Buffer.from(payload.iv, 'base64'));
     decipher.setAuthTag(Buffer.from(payload.authTag, 'base64'));
     return Buffer.concat([decipher.update(Buffer.from(payload.data, 'base64')), decipher.final()]);
   } catch {
