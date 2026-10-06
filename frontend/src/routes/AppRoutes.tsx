@@ -36,6 +36,8 @@ const NotFoundPage = lazy(() => import('@/pages/NotFoundPage').then((m) => ({ de
 const HospitalsPage = lazy(() => import('@/pages/HospitalsPage').then((m) => ({ default: m.HospitalsPage })));
 const BlockchainExplorerPage = lazy(() => import('@/pages/BlockchainExplorerPage').then((m) => ({ default: m.BlockchainExplorerPage })));
 const CaregiversPage = lazy(() => import('@/pages/CaregiversPage').then((m) => ({ default: m.CaregiversPage })));
+const AppointmentsPage = lazy(() => import('@/pages/AppointmentsPage').then((m) => ({ default: m.AppointmentsPage })));
+const PrescriptionsPage = lazy(() => import('@/pages/PrescriptionsPage').then((m) => ({ default: m.PrescriptionsPage })));
 
 export const AppRoutes = () => (
   <Suspense fallback={<LoadingState label="Loading view…" className="min-h-[60vh]" />}>
@@ -54,6 +56,8 @@ export const AppRoutes = () => (
         <Route path="/hospitals" element={<HospitalsPage />} />
         <Route path="/explorer" element={<BlockchainExplorerPage />} />
         <Route path="/caregivers" element={<CaregiversPage />} />
+        <Route path="/appointments" element={<AppointmentsPage />} />
+        <Route path="/prescriptions" element={<PrescriptionsPage />} />
         <Route path="/records/:recordId" element={<RecordDetailPage />} />
         <Route path="/access-requests" element={<AccessRequestsPage />} />
         <Route path="/verification" element={<VerificationPage />} />

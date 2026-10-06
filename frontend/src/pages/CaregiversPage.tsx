@@ -4,7 +4,7 @@ import { apiClient } from '@/api/client';
 import { SectionHeading, Card } from '@/components/ui/Card';
 import { Spinner, ErrorState } from '@/components/ui/Feedback';
 import { formatDateTime } from '@/utils/format';
-import { useAuth } from '@/context/AuthContext';
+
 
 interface Caregiver {
   _id: string;
@@ -16,7 +16,7 @@ interface Caregiver {
 }
 
 export const CaregiversPage = () => {
-  const { user } = useAuth();
+  
   const [caregivers, setCaregivers] = useState<Caregiver[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,9 +56,9 @@ export const CaregiversPage = () => {
   };
 
   const handleRemove = async (id: string) => {
-    if (!confirm('Are you sure you want to remove this caregiver?')) return;
+    if (!window.confirm('Are you sure you want to remove this caregiver?')) return;
     try {
-      await apiClient.delete(/caregivers/);
+      await apiClient.delete(`/caregivers/${id}`);
       await fetchCaregivers();
     } catch (err: any) {
       alert(err.message || 'Failed to remove caregiver');
