@@ -47,7 +47,7 @@ const buildPrompt = (context: {
   description?: string;
   content?: string;
   question?: string;
-  simpleLanguage: boolean;
+  language: string;
 }) => {
   const body = context.content
     ? context.content
@@ -76,7 +76,7 @@ Return JSON with exactly these keys:
   "keyFindings": string[] (3-6 bullet findings drawn from the document),
   "terminology": Array<{ "term": string, "explanation": string }> (0-6 medical terms explained simply),
   "patientFriendlyExplanation": string (plain language paragraph, no jargon${
-    context.simpleLanguage ? ', written at a very simple reading level' : ''
+    context.language === 'simple-en' ? ', written at a very simple reading level' : ''
   }),
   "suggestedQuestions": string[] (3-5 questions the patient could ask their doctor),
   "urgency": "routine" | "discuss-soon" | "prompt-attention"
@@ -196,7 +196,7 @@ export const analyzeRecord = async (user: AuthenticatedUser, input: AnalyzeRecor
             description: record.description,
             content: full?.extractedText,
             question: input.question,
-            simpleLanguage: input.language === 'simple-en',
+            language: input.language || 'en',
           }),
         },
       ],
@@ -274,4 +274,58 @@ export const generateTimelineNarrative = async (user: AuthenticatedUser, input: 
     logger.error('Timeline generation failed', { error: err instanceof Error ? err.message : 'Unknown error' });
     throw ApiError.internal('Failed to generate AI timeline.', 'AI_GENERATION_FAILED');
   }
+};
+export const compareRecords = async (user: AuthenticatedUser, recordIds: string[], language: string = 'en') => {
+  if (!isAiConfigured()) throw ApiError.serviceUnavailable('The AI assistant is not configured.', 'AI_NOT_CONFIGURED');
+  if (recordIds.length !== 2) throw new Error('Must provide exactly 2 record IDs for comparison.');
+
+  const [id1, id2] = recordIds;
+  const r1 = await MedicalRecord.findOne({ recordId: id1 }).select('+extractedText');
+  const r2 = await MedicalRecord.findOne({ recordId: id2 }).select('+extractedText');
+
+  if (!r1 || !r2) throw ApiError.notFound('One or more records not found.');
+
+  // Access checks
+  const { CaregiverAccess } = await import('../models/CaregiverAccess.js');
+  const checkAccess = async (record: any) => {
+    if (user.role === 'patient') {
+      if (record.patient.toString() !== user.id) {
+        const isCaregiver = await CaregiverAccess.exists({ caregiverId: user.id, patientId: record.patient, isActive: true });
+        if (!isCaregiver) throw ApiError.forbidden('You can only access your own medical records.', { code: 'NOT_RECORD_OWNER' });
+      }
+    }
+  };
+
+  await checkAccess(r1);
+  await checkAccess(r2);
+
+  const prompt = `You are a medical assistant reviewing two patient records. Compare them and identify changes, improvements, or new concerns.
+
+Record 1 (${r1.title}):
+${r1.extractedText}
+
+Record 2 (${r2.title}):
+${r2.extractedText}
+
+Language: ${language}
+
+Return JSON with exactly these keys:
+{
+  "comparisonSummary": "string (plain language)",
+  "changes": "Array<{ topic: string, change: 'improved' | 'worsened' | 'stable' | 'new', description: string }>",
+  "recommendations": "string[]"
+}`;
+
+  const client = getClient();
+  const completion = await client.chat.completions.create({
+    model: env.ai.model,
+    messages: [{ role: 'system', content: prompt }],
+    temperature: 0.0,
+    response_format: { type: 'json_object' },
+  });
+
+  const responseContent = completion.choices[0]?.message?.content;
+  if (!responseContent) throw new Error('Empty AI response');
+  
+  return JSON.parse(responseContent);
 };

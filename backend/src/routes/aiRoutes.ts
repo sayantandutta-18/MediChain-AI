@@ -13,3 +13,5 @@ router.post('/analyze', validate({ body: analyzeRecordSchema }), aiController.an
 router.get('/timeline', aiController.generateTimeline);
 
 export default router;
+
+router.post('/compare', authenticate, aiController.compareRecords);

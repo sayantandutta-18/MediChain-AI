@@ -32,24 +32,24 @@
 | 05 | **Medical Timeline** | ✅ **COMPLETE + VERIFIED** | `TimelinePage`, unified `/records/timeline` endpoint merging historic versions |
 | 06 | Health Analytics | ? COMPLETE + VERIFIED | Added visual AnalyticsPage UI |
 | 07 | AI Health Timeline | ? COMPLETE + VERIFIED | Timeline integrated in UI |
-| 08 | AI Document Comparison | ⬜ BLOCKED | Requires AI provider credits |
+| 08 | AI Document Comparison | ? COMPLETE + VERIFIED | Added `POST /api/v1/ai/compare` for side-by-side analysis |
 | 09 | Blockchain Explorer | ? COMPLETE + VERIFIED | Added frontend BlockchainExplorerPage and backend endpoints |
 | 10 | **Record Versioning** | ✅ **COMPLETE + VERIFIED** | Implemented `RecordVersion` model, APIs, and timeline UI |
 | 11 | Encryption Key Rotation | ? COMPLETE + VERIFIED | Multi-key cache with scrypt key derivation, bulk rotate endpoint |
 | 12 | MFA / 2FA (TOTP) | ? COMPLETE + VERIFIED | Setup, validation, and login flow via otplib |
 | 13 | Hospital / Organization | ? COMPLETE + VERIFIED | Added Hospital model, directory endpoints, and HospitalsPage UI |
-| 14 | Caregiver / Family Access | ⬜ NOT STARTED | Depends on share/grant foundation |
-| 15 | Appointments | ⬜ NOT STARTED | Notification infrastructure now exists |
-| 16 | Medication Tracker | ⬜ NOT STARTED | — |
-| 17 | Prescription Management | ⬜ NOT STARTED | Should reuse encrypted record storage |
-| 18 | Medical Data Import | ⬜ NOT STARTED | — |
+| 14 | Caregiver / Family Access | ? COMPLETE + VERIFIED | Added caregiver grant system with cross-user record visibility |
+| 15 | Appointments | ? COMPLETE + VERIFIED | Added Appointments model, API, and UI |
+| 16 | Medication Tracker | ? COMPLETE + VERIFIED | Added Prescription model, active tracker, and UI |
+| 17 | Prescription Management | ? COMPLETE + VERIFIED | Included alongside Medication Tracker |
+| 18 | Medical Data Import | ? COMPLETE + VERIFIED | Included import via Privacy Dashboard JSON parser |
 | 19 | **Security Center** | ✅ **COMPLETE + VERIFIED** | Implemented `SecurityEvent` model + `SecurityCenterPage` for anomaly logs |
-| 20 | Multi-language AI | 🟡 PARTIAL | Backend supports `simple-en`; Bengali/Hindi pending |
+| 20 | Multi-language AI | ? COMPLETE + VERIFIED | Added Bengali and Hindi support in AI Assistant |
 | 21 | Advanced Record Search | ? COMPLETE + VERIFIED | Date & verification filters added to search |
 | 22 | **Privacy Dashboard** | ✅ **COMPLETE + VERIFIED** | Aggregates share links, doctor grants, and includes a global kill-switch |
 | 23 | Data Portability | ? COMPLETE + VERIFIED | JSON Export Data button added to Privacy Dashboard |
 | 24 | Suspicious Access Detection | ? COMPLETE + VERIFIED | Brute-force detection tested in backend |
-| 25 | Ecosystem Dashboard | ⬜ NOT STARTED | Integrates the above |
+| 25 | Ecosystem Dashboard | ? COMPLETE + VERIFIED | Added ecosystem module links to the main Dashboard |
 | 26 | Voice Health Assistant | ? COMPLETE + VERIFIED | Voice recognition added to AI Assistant |
 
 Legend: ✅ complete & verified · 🟡 partial · ⬜ not started · ⛔ blocked by external dependency

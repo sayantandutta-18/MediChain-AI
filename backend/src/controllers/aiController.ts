@@ -1,6 +1,6 @@
 import { asyncHandler } from '../utils/asyncHandler';
 import { currentUser } from '../middleware/auth';
-import { aiHealth, analyzeRecord, generateTimelineNarrative } from '../services/aiService';
+import { aiHealth, analyzeRecord, generateTimelineNarrative, compareRecords as compareRecordsService } from '../services/aiService';
 import { recordAuditEvent } from '../services/auditLogService';
 import { analyzeRecordSchema } from '../validators/aiValidators';
 
@@ -35,4 +35,24 @@ export const analyze = asyncHandler(async (req, res) => {
 
 export const status = asyncHandler(async (_req, res) => {
   res.json({ success: true, data: { ai: aiHealth() } });
+});
+
+export const compareRecords = asyncHandler(async (req, res) => {
+  const user = currentUser(req);
+  const { recordIds, language } = req.body;
+  
+  if (!Array.isArray(recordIds) || recordIds.length !== 2) {
+    res.status(400).json({ success: false, error: 'Must provide an array of exactly 2 record IDs' });
+    return;
+  }
+  
+  const report = await compareRecordsService(user, recordIds, language);
+  
+  res.json({
+    success: true,
+    data: {
+      generatedAt: new Date().toISOString(),
+      report,
+    },
+  });
 });
