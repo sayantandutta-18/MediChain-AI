@@ -1,3 +1,4 @@
+import { CaregiverAccess } from '../models/CaregiverAccess';
 import { randomUUID } from 'crypto';
 import mongoose from 'mongoose';
 import { MedicalRecord, type IMedicalRecord } from '../models/MedicalRecord';
@@ -113,7 +114,6 @@ export const listRecords = async (user: AuthenticatedUser, input: ListRecordsInp
   const filter: Record<string, unknown> = {};
 
   if (user.role === 'patient') {
-    const { CaregiverAccess } = await import('../models/CaregiverAccess.js');
     const caregiverGrants = await CaregiverAccess.find({ caregiverId: user.id, isActive: true });
     const accessiblePatientIds = [user.id, ...caregiverGrants.map(g => g.patientId.toString())];
     filter.patient = { $in: accessiblePatientIds };

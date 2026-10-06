@@ -1,3 +1,4 @@
+import { CaregiverAccess } from '../models/CaregiverAccess';
 import OpenAI from 'openai';
 import { env } from '../config/env';
 import { ApiError } from '../utils/ApiError';
@@ -286,7 +287,6 @@ export const compareRecords = async (user: AuthenticatedUser, recordIds: string[
   if (!r1 || !r2) throw ApiError.notFound('One or more records not found.');
 
   // Access checks
-  const { CaregiverAccess } = await import('../models/CaregiverAccess.js');
   const checkAccess = async (record: any) => {
     if (user.role === 'patient') {
       if (record.patient.toString() !== user.id) {

@@ -1,3 +1,4 @@
+import { CaregiverAccess } from '../models/CaregiverAccess';
 import { AccessRequest, type IAccessRequest } from '../models/AccessRequest';
 import { MedicalRecord, type IMedicalRecord } from '../models/MedicalRecord';
 import { ApiError } from '../utils/ApiError';
@@ -77,7 +78,6 @@ export const assertRecordAccess = async (
 ): Promise<{ accessRequest: IAccessRequest | null }> => {
   if (user.role === 'patient') {
     if (record.patient.toString() !== user.id) {
-      const { CaregiverAccess } = await import('../models/CaregiverAccess.js');
       const isCaregiver = await CaregiverAccess.exists({ caregiverId: user.id, patientId: record.patient, isActive: true });
       if (!isCaregiver) {
         throw ApiError.forbidden('You can only access your own medical records.', {
