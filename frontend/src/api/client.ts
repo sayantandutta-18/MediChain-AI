@@ -54,7 +54,7 @@ export const userStorage = {
   },
 };
 
-const baseURL = import.meta.env.VITE_API_URL ?? '/api/v1';
+const baseURL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 /**
  * TRD-13: one centralised axios instance. Auth header, response unwrapping and

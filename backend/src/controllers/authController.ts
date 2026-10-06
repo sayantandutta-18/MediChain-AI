@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { asyncHandler } from '../utils/asyncHandler';
 import { currentUser } from '../middleware/auth';
 import * as authService from '../services/authService';
+import { User } from '../models/User';
 import { logSecurityEvent } from '../services/securityEventService';
 import { recordAuditEvent } from '../services/auditLogService';
 import {
@@ -107,7 +108,7 @@ export const listDoctors = asyncHandler(async (req, res) => {
 
 export const setupMfa = asyncHandler(async (req, res) => {
   const user = currentUser(req);
-  const dbUser = await (await import('../models/User.js')).User.findById(user.id);
+  const dbUser = await User.findById(user.id);
   if (!dbUser) throw new Error('User not found');
   
   const otplib = await import('otplib');
@@ -127,7 +128,7 @@ export const setupMfa = asyncHandler(async (req, res) => {
 
 export const verifyAndEnableMfa = asyncHandler(async (req, res) => {
   const user = currentUser(req);
-  const dbUser = await (await import('../models/User.js')).User.findById(user.id).select('+twoFactorSecret');
+  const dbUser = await User.findById(user.id).select('+twoFactorSecret');
   if (!dbUser) throw new Error('User not found');
   
   const { code } = req.body;

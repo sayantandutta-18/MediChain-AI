@@ -13,6 +13,7 @@
     "dev:backend": "node scripts/dev-one.js api",
     "dev:frontend": "node scripts/dev-one.js web",
     "build": "node scripts/build.js",
+    "start": "node backend/dist/server.js",
     "test": "node scripts/run.js backend test",
     "test:coverage": "node scripts/run.js backend test:coverage",
     "smoke": "node scripts/run.js backend smoke",
@@ -20,6 +21,6 @@
     "lint": "node scripts/typecheck.js"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20 <21"
   }
 }

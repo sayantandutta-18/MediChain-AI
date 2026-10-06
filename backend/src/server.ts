@@ -27,8 +27,9 @@ const start = async (): Promise<Server> => {
   }
 
   const app = createApp();
-  const server = app.listen(env.port, () => {
-    logger.info(`MediChain-AI API listening on port ${env.port} (${env.nodeEnv})`);
+  const host = process.env.HOST || '0.0.0.0';
+  const server = app.listen(env.port, host, () => {
+    logger.info(`MediChain-AI API listening on ${host}:${env.port} (${env.nodeEnv})`);
     logger.info(`API base: ${env.apiPrefix} | CORS: ${env.security.corsOrigins.join(', ')}`);
     if (!env.sui.packageId) {
       logger.warn('SUI_PACKAGE_ID is not set - blockchain anchors will be recorded as SIMULATED.');

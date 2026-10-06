@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { User } from '../models/User';
+import { User, type IUser } from '../models/User';
 import { AuditLog } from '../models/AuditLog';
 import { ApiError } from '../utils/ApiError';
 import { DOCTOR_VERIFICATION_STATUSES } from '../types/enums';
@@ -14,7 +14,7 @@ const verifyDoctorSchema = z.object({
 export const getPendingDoctors = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const doctors = await User.find({ role: 'doctor', verificationStatus: 'PENDING' }).sort({ createdAt: -1 });
-    res.json({ success: true, data: doctors.map(d => ({
+    res.json({ success: true, data: doctors.map((d: IUser) => ({
       id: d._id.toString(),
       name: d.name,
       email: d.email,

@@ -114,8 +114,8 @@ export const listDoctors = async (search?: string) => {
     .select('name email specialty registrationNumber hospital experience verificationStatus createdAt')
     .sort({ name: 1 })
     .limit(100)
-    .lean();
-  return doctors.map((doc) => ({
+    .lean<IUser[]>();
+  return doctors.map((doc: IUser) => ({
     id: doc._id.toString(),
     name: doc.name,
     email: doc.email,
